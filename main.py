@@ -264,8 +264,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             if self.checkBoxShape.isChecked():
                 shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
                                           shapeType=shapefile.POLYGON, encoding="cp1251")
-                shp_wr.field('CadN_ZU', 'C', size=30)
+                shp_wr.field('CadN_ZU', 'C', size=20)
                 shp_wr.field('CadN_EZP', 'C', size=20)
+                shp_wr.field('NumOfCont', 'C', size=20)
                 shp_wr.field('Area', 'N')
                 shp_wr.field('Address', 'C', size=255)
                 shp_wr.field('Status', 'C', size=255)
@@ -325,9 +326,19 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                     year2, month2, day2 = inverted_extract_date
                                 else:
                                     year2, month2, day2 = 1, 1, 1
-                                shp_wr.record(key, parent_cad_number, int(area), address, status, category,
-                                              permitted_use_by_doc, owner, own_name_reg_numb_date, encumbrances,
-                                              encumbrances_name_reg_numb_date_duration, special_notes,
+                                if re.search(r'\(', key):
+                                    shp_cad_number = key[:key.index('(')]
+                                    num_of_cont = key[key.index('('):]
+                                else:
+                                    shp_cad_number = key
+                                    num_of_cont = ''
+                                if parent_cad_number == shp_cad_number:
+                                    shp_parent_cad_number = ''
+                                else:
+                                    shp_parent_cad_number = parent_cad_number
+                                shp_wr.record(shp_cad_number, shp_parent_cad_number, num_of_cont, int(area), address,
+                                              status, category, permitted_use_by_doc, owner, own_name_reg_numb_date,
+                                              encumbrances, encumbrances_name_reg_numb_date_duration, special_notes,
                                               datetime.date(int(year1), int(month1), int(day1)),
                                               datetime.date(int(year2), int(month2), int(day2)))
                     if self.checkBoxExcel.isChecked():
