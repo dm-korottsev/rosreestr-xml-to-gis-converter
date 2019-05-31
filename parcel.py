@@ -422,7 +422,7 @@ class AbstractParcel(ABC):
                         owner_obrem = childs.find(self._dop + 'Owner')
                         share_text = childs.find(self._dop + 'ShareText')
                         if share_text is not None:
-                            obrem_text = share_text.text[:120]
+                            obrem_text = ' (' + share_text.text + ')'
                         for child in childs.findall(self._dop + 'DocFound'):
                             content = child.find(self._dop + 'Content')
                             if content is not None:
@@ -430,7 +430,7 @@ class AbstractParcel(ABC):
                                     doc.append(content.text)
                         if owner_obrem is None:
                             if share_text is not None:
-                                set_obrem.add(obrem_name + ' (' + obrem_text + ')')
+                                set_obrem.add(obrem_name + obrem_text)
                             else:
                                 set_obrem.add(obrem_name)
                         else:
@@ -440,17 +440,17 @@ class AbstractParcel(ABC):
                                     for names in child.findall(self._dop + 'FIO/'):
                                         nname += names.text + ' '
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
-                                        list_arendatorov.append(str(obrem_name + ' ' + nname))
+                                        list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
                                 if child.tag == self._dop + 'Organization':
                                     content = child.find(self._dop + 'Name')
                                     nname = content.text
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
-                                        list_arendatorov.append(str(obrem_name + ' ' + nname))
+                                        list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
                                 if child.tag == self._dop + 'Governance':
                                     names = child.find(self._dop + 'Name')
                                     nname = names.text + ' '
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
-                                        list_arendatorov.append(str(obrem_name + ' ' + nname))
+                                        list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
             if set_obrem is not set():
                 if len(set_obrem) == 1:
                     for i in set_obrem:
