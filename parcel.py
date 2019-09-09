@@ -145,7 +145,6 @@ class AbstractParcel(ABC):
         vse_doli_u_odnogo_chel = []
         list_doli_ga = []
         cell_owner_doli_ga = []
-        name_gkn = []
         if self._extract_object_right is not None:
             for right in self._extract_object_right.findall(self._dop + 'ExtractObject/' +
                                                             self._dop + 'ObjectRight/' +
@@ -159,11 +158,12 @@ class AbstractParcel(ABC):
                             doli_1 = childs.find(self._dop + 'ShareText')
                             doli_2 = childs.find(self._dop + 'Share')
                             if doli_1 is not None:
-                                try:
-                                    list_dolei.append(int(re.sub(r"[0-9]+/", '', doli_1.text)))
-                                    doli_two_persons.append(doli_1.text)
-                                except:
-                                    list_doli_ga.append(doli_1.text)
+                                if not re.search(r"пропорциональн", doli_1.text):
+                                    try:
+                                        list_dolei.append(int(re.sub(r"[0-9]+/", '', doli_1.text)))
+                                        doli_two_persons.append(doli_1.text)
+                                    except:
+                                        list_doli_ga.append(doli_1.text)
                             elif doli_2 is not None:
                                 list_dolei.append(int(doli_2.get('Denominator')))
                                 stroka = str(doli_2.get('Numerator')) + "/" + str(doli_2.get('Denominator'))
@@ -219,9 +219,10 @@ class AbstractParcel(ABC):
                                 if proverka is not None:
                                     if proverka.text != '001003000000':
                                         list_owner.append(nname)
-        for item in list_type_sobstv:
-            i_of_it = list_type_sobstv.index(item)
-            cell_owner.append(str(item + ' ' + list_owner[i_of_it]))
+        if len(list_type_sobstv) == len(list_owner):
+            for item in list_type_sobstv:
+                i_of_it = list_type_sobstv.index(item)
+                cell_owner.append(str(item + ' ' + list_owner[i_of_it]))
         for item in list_doli_ga:
             i_of_it = list_doli_ga.index(item)
             cell_owner_doli_ga.append(str(item + ' ' + list_owner[i_of_it]))
@@ -267,18 +268,18 @@ class AbstractParcel(ABC):
                             fio_gkn = family_name_gkn + ' ' + first_name_gkn
                         else:
                             fio_gkn = None
-                        if fio_gkn is not None and fio_gkn not in name_gkn:
+                        if fio_gkn is not None and fio_gkn not in list_owner:
                             list_owner.append(fio_gkn)
                     elif organization_gkn is not None:
                         names_gkn = organization_gkn.find(self._dop + 'Name')
-                        if names_gkn.text not in name_gkn:
+                        if names_gkn.text not in list_owner:
                             if names_gkn.text is not None:
                                 list_owner.append(names_gkn.text)
                             else:
                                 list_owner.append(' ')
                     elif governance_gkn is not None:
                         names_gkn = governance_gkn.find(self._dop + 'Name')
-                        if names_gkn.text not in name_gkn:
+                        if names_gkn.text not in list_owner:
                             if names_gkn.text is not None:
                                 list_owner.append(names_gkn.text)
                             else:
@@ -322,7 +323,9 @@ class AbstractParcel(ABC):
                 result = "Администрация " + re.sub('ой', 'ого', name_r + " района")
                 cell_owner.append(result)
         if type_sobstv == 'Долевая собственность':
-            if list_doli_ga:
+            if len(list_type_sobstv) == 1 and len(list_owner) == 1:
+                return cell_owner[0]
+            elif list_doli_ga:
                 if len(list_doli_ga) == len(list_owner):
                     return 'Долевая собственность ' + ', '.join(cell_owner_doli_ga)
                 else:
@@ -340,7 +343,8 @@ class AbstractParcel(ABC):
                 except:
                     print('не удалось обработать файл: ' + self.xml_file_path)
             else:
-                return type_sobstv
+                if len(set_dolevikov) > 0:
+                    return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
         elif list_sovm_sobsv:
             if list_sovm_sobsv != list_owner:
                 return 'Совместная собственность ' + ', '.join(list_sovm_sobsv) + ', ' + ', '.join(cell_owner)
@@ -496,6 +500,8 @@ class AbstractParcel(ABC):
                                             family_name.text + ' ' + first_name.text + ' ' + patronymic.text
                         if type_name_enc_gkn not in list_arendatorov:
                             list_arendatorov.append(type_name_enc_gkn)
+                    elif type_obr_gkn is not None:
+                        list_arendatorov.append(self.encumbrance_classifier[type_obr_gkn.text])
         # Приводим к нормальному виду ФИО арендаторов, записанные большими буквами
         for i in list_arendatorov:
             s = re.search('"', i)
@@ -552,7 +558,13 @@ class AbstractParcel(ABC):
             if encumbrances_gkn is not None:
                 for encumbrance_gkn in encumbrances_gkn.findall(self._dop + 'Encumbrance'):
                     type_obr_gkn = encumbrance_gkn.find(self._dop + 'Type')
-                    rn_rent_gkn = encumbrance_gkn.find(self._dop + 'Registration/' + self._dop + 'RegNumber')
+                    reg_number = encumbrance_gkn.find(self._dop + 'Registration/' + self._dop + 'RegNumber')
+                    enc_cad_number = encumbrance_gkn.find(self._dop + 'CadastralNumberRestriction')
+                    rn_rent_gkn = None
+                    if reg_number is not None:
+                        rn_rent_gkn = reg_number
+                    elif enc_cad_number is not None:
+                        rn_rent_gkn = enc_cad_number
                     rd_rent_gkn = encumbrance_gkn.find(self._dop + 'Registration/' + self._dop + 'RegDate')
                     if type_obr_gkn is not None and rn_rent_gkn is not None and rd_rent_gkn is not None:
                         name_numb_date = self.encumbrance_classifier[type_obr_gkn.text] + ' №' + rn_rent_gkn.text +\

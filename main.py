@@ -10,11 +10,14 @@ import time
 import json
 from zipfile import *
 import shapefile
+import functools
+from traceback import format_exc
 from logic import write_settings, get_settings, to_shorten_a_long_name
 from parcel import AbstractParcel
 import graphic_interface
 
-__author__ = "Dmitrii S. Korottsev"
+
+__author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
@@ -22,6 +25,25 @@ __version__ = "1.0"
 __maintainer__ = "Dmitrii S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
+
+
+def logger(func):
+    '''
+    декоратор-логгер, записывает в файл "log.txt" ошибки, возникшие при работе функции, не изменяя имя исходной фукнкции
+    '''
+    @functools.wraps(func)
+    def wrapped(arg):
+        try:
+            result = func(arg)
+            return result
+        except:
+            with open("log.txt", "a") as f:
+                for s in format_exc().splitlines():
+                    t = datetime.datetime.now()
+                    f.write(t.strftime("%d.%m.%Y  %H:%M:%S") + " " + s + "\n")
+                f.write("---------------------------------------------------------------------------------------------")
+            print('Ошибка! Подробности в файле "log.txt"')
+    return wrapped
 
 
 class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
@@ -121,6 +143,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             self.label_input_zip.setText(str(directory_in_zip))
             write_settings('folder_in_zip', str(directory_in_zip))
 
+    @logger
     def extract_xml_from_zip(self):
         '''
         извлекает выписки из ЕГРН на земельные участки из архива zip, сохраняя исходный архив, удаляя промежуточные
@@ -154,6 +177,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         self.textBrowser.append("------------------------------------------------------------------------------------"
                                 "---------------------------")
 
+    @logger
     def rename_xml(self):
         '''
         переименовывает выписки из ЕГРН на земельные участки в формате: кадастровый номер---дата получения выписки
@@ -201,6 +225,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         self.textBrowser.append("------------------------------------------------------------------------------------"
                                 "---------------------------")
 
+    @logger
     def start_conv(self):
         if self.radioButton_zip.isChecked() is False and self.radioButton_xml.isChecked() is False:
             QMessageBox.warning(self, 'Ошибка', "Необходимо выбрать формат обрабатываемых файлов (xml или zip)")
@@ -263,15 +288,15 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 row_numb = 1
             if self.checkBoxShape.isChecked():
                 shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
-                                          shapeType=shapefile.POLYGON, encoding="cp1251")
-                shp_wr.field('CadN_ZU', 'C', size=20)
-                shp_wr.field('CadN_EZP', 'C', size=20)
+                                          shapeType=shapefile.POLYGON, encoding="utf-8")
+                shp_wr.field('Parcel_KN', 'C', size=20)
+                shp_wr.field('SnglUseKN', 'C', size=20)
                 shp_wr.field('NumOfCont', 'C', size=20)
                 shp_wr.field('Area', 'N')
-                shp_wr.field('Address', 'C', size=255)
-                shp_wr.field('Status', 'C', size=255)
+                shp_wr.field('Note', 'C', size=255)
+                shp_wr.field('Parcel_St', 'C', size=255)
                 shp_wr.field('Category', 'C', size=40)
-                shp_wr.field('PermUse', 'C', size=255)
+                shp_wr.field('ByDoc', 'C', size=255)
                 shp_wr.field('Owner', 'C', size=255)
                 shp_wr.field('OwnRightN', 'C', size=255)
                 shp_wr.field('Encumbr', 'C', size=255)
