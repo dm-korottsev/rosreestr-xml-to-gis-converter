@@ -22,7 +22,7 @@ __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
 __version__ = "1.0"
-__maintainer__ = "Dmitrii S. Korottsev"
+__maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
@@ -267,12 +267,13 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws['L1'] = 'Особые отметки'
                 ws['M1'] = 'Дата постановки на кад. учёт'
                 ws['N1'] = 'Дата получения сведений'
-                for cellObj in ws['A1':'N1']:
+                ws['O1'] = 'КН расположенных в пределах земельного участка объектов недвижимости'
+                for cellObj in ws['A1':'O1']:
                     for cell in cellObj:
                         cell.fill = fill_1
                         cell.font = font_1
-                ws.column_dimensions['A'].width = 17
-                ws.column_dimensions['B'].width = 17
+                ws.column_dimensions['A'].width = 18
+                ws.column_dimensions['B'].width = 18
                 ws.column_dimensions['C'].width = 10
                 ws.column_dimensions['D'].width = 35
                 ws.column_dimensions['E'].width = 16
@@ -285,6 +286,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws.column_dimensions['L'].width = 45
                 ws.column_dimensions['M'].width = 14
                 ws.column_dimensions['N'].width = 14
+                ws.column_dimensions['O'].width = 18
                 row_numb = 1
             if self.checkBoxShape.isChecked():
                 shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
@@ -304,13 +306,14 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 shp_wr.field('Special', 'C', size=255)
                 shp_wr.field('DatOfCreat', 'D')
                 shp_wr.field('DateOfGet', 'D')
+                shp_wr.field('EstateObjs', 'C', size=255)
             xml_errors = []
             pb = 0
             count_successful_files = 0
             directory = get_settings('folder_in_xml')
             xmlfiles = list(filter(lambda x: x.endswith('.xml'), os.listdir(directory)))
+            self.progressBar.setValue(0)
             for xml_file in xmlfiles:
-                self.progressBar.setValue(0)
                 xml_file_path = directory + "\\" + xml_file
                 parcel = AbstractParcel.create_a_parcel_object(xml_file_path)
                 if parcel is not None:
@@ -330,6 +333,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                     special_notes = re.sub("^\s+|\n|\r|\s+$", '', parcel.special_notes)
                     date_of_cadastral_reg = parcel.date_of_cadastral_reg
                     extract_date = parcel.extract_date
+                    estate_objects = parcel.estate_objects
                     if self.checkBoxReplace.isChecked():
                         address = to_shorten_a_long_name(address)
                         permitted_use_by_doc = to_shorten_a_long_name(permitted_use_by_doc)
@@ -365,7 +369,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                               status, category, permitted_use_by_doc, owner, own_name_reg_numb_date,
                                               encumbrances, encumbrances_name_reg_numb_date_duration, special_notes,
                                               datetime.date(int(year1), int(month1), int(day1)),
-                                              datetime.date(int(year2), int(month2), int(day2)))
+                                              datetime.date(int(year2), int(month2), int(day2)), estate_objects)
+                        else:
+                            self.textBrowser.append(f'Выписка {xml_file} не содержит координат границ ЗУ')
                     if self.checkBoxExcel.isChecked():
                         #  описание стиля границы ячейки в таблице MS Excel
                         border_1 = Border(left=Side(border_style='thin',
@@ -402,6 +408,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                             ws['L' + str(row_numb)] = special_notes
                             ws['M' + str(row_numb)] = date_of_cadastral_reg
                             ws['N' + str(row_numb)] = extract_date
+                            ws['O' + str(row_numb)] = estate_objects
                         else:
                             for parcel_cad_number in entry_parcels:
                                 row_numb += 1
@@ -419,6 +426,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                 ws['L' + str(row_numb)] = special_notes
                                 ws['M' + str(row_numb)] = date_of_cadastral_reg
                                 ws['N' + str(row_numb)] = extract_date
+                                ws['O' + str(row_numb)] = estate_objects
                     if self.checkBoxShape.isChecked():
                         pass
                     count_successful_files += 1
@@ -427,7 +435,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 pb += 1
                 self.progressBar.setValue((pb / len(xmlfiles)) * 100)
             if self.checkBoxExcel.isChecked():
-                for cellObj in ws['A1':'N' + str(row_numb)]:
+                for cellObj in ws['A1':'O' + str(row_numb)]:
                     for cell in cellObj:
                         cell.border = border_1
                         cell.alignment = Alignment(wrapText=True)  # задаёт выравнивание "перенос по словам"

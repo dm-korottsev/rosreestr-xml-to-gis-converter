@@ -3,12 +3,12 @@ import re
 import xml.etree.ElementTree as ElT
 from logic import get_dict_from_csv, settings_from_json, gauss_area
 
-__author__ = "Dmitrii S. Korottsev"
+__author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
 __version__ = "1.0"
-__maintainer__ = "Dmitrii S. Korottsev"
+__maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
@@ -23,16 +23,20 @@ class AbstractParcel(ABC):
         self._namespaces = dict()
         self._adr = ''
         self._spat = ''
-        self.codes_of_rf_regions = get_dict_from_csv('region.csv')
-        self.status_classifier = get_dict_from_csv('status.csv')
-        self.land_category_classifier = get_dict_from_csv('land_category.csv')
-        self.permitted_use_classifier = get_dict_from_csv('utilization.csv')
-        self.rights_classifier = get_dict_from_csv('right.csv')
-        self.encumbrance_classifier = get_dict_from_csv('encumbrance.csv')
+        self.codes_of_rf_regions = get_dict_from_csv('region.csv')  # коды регионов РФ
+        self.status_classifier = get_dict_from_csv('status.csv')  # коды статусов земельных участков
+        self.land_category_classifier = get_dict_from_csv('land_category.csv')  # коды категорий земель
+        self.permitted_use_classifier = get_dict_from_csv('utilization.csv')  # коды видов разрешённого использования
+        self.rights_classifier = get_dict_from_csv('right.csv')  # коды видов прав
+        self.encumbrance_classifier = get_dict_from_csv('encumbrance.csv')  # коды видов ограничений (обременений)
         self.settings = settings_from_json()
 
     @staticmethod
     def create_a_parcel_object(xml_file_path: str):
+        """
+        Определяет xml-схему выписки на земельный участок и возвращает экземпляр соответствующего ей класса.
+        В случае, если xml-схема выписки из Росреестра неизвестна, возвращает None.
+        """
         tree = ElT.parse(xml_file_path)
         root = tree.getroot()
         d1 = '{urn://x-artefacts-rosreestr-ru/outgoing/kvzu/7.0.1}'
@@ -48,11 +52,20 @@ class AbstractParcel(ABC):
 
     @property
     def parent_cad_number(self):
+        """
+        возвращает для обычного земельного участка - его кадастровый номер,
+        для единого землепользования - кадастровый номер единого землепользования
+        :return: str
+        """
         cad_number = self._parcel.get('CadastralNumber')
         return cad_number
 
     @property
     def entry_parcels(self):
+        """
+        возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
+        :return: list
+        """
         cadastral_numbers = []
         composition_ez = self._parcel.find(self._dop + 'CompositionEZ')
         if composition_ez is not None:
@@ -62,6 +75,10 @@ class AbstractParcel(ABC):
 
     @property
     def area(self):
+        """
+        возвращает площадь земельного участка в квадратных метрах
+        :return: str
+        """
         t1_area = self._parcel.find(self._dop + 'Area')
         t2_area = t1_area.find(self._dop + 'Area')
         parcel_area = t2_area.text
@@ -69,11 +86,19 @@ class AbstractParcel(ABC):
 
     @property
     def status(self):
+        """
+        возвращает статус земельного участка (например: учтённый, временный и т.д.)
+        :return: str
+        """
         st = self.status_classifier[self._parcel.get('State')]
         return st
 
     @property
     def address(self):
+        """
+        возвращает адрес земельного участка в человекочитаемом виде
+        :return: str
+        """
         t_address = None
         address_note = None
         location = self._parcel.find(self._dop + 'Location')
@@ -114,6 +139,10 @@ class AbstractParcel(ABC):
 
     @property
     def category(self):
+        """
+        возвращает категорию земель
+        :return: str
+        """
         t_category = self._parcel.find(self._dop + 'Category')
         if t_category is not None:
             category = self.land_category_classifier[t_category.text]
@@ -123,6 +152,10 @@ class AbstractParcel(ABC):
 
     @property
     def permitted_use_by_doc(self):
+        """
+        возвращает вид разрешённого использования (по документу)
+        :return: str
+        """
         utilization = self._parcel.find(self._dop + 'Utilization')
         if utilization.get('ByDoc') is not None:
             utiliz_by_doc = utilization.get('ByDoc')
@@ -132,6 +165,10 @@ class AbstractParcel(ABC):
 
     @property
     def owner(self):
+        """
+        возвращает список правообладателей (вид права и лицо, владеющее этим правом)
+        :return: str
+        """
         type_sobstv = ''
         list_dolei = []
         list_type_sobstv = []
@@ -371,6 +408,7 @@ class AbstractParcel(ABC):
     def own_name_reg_numb_date(self):
         """
         возвращает вид права, номер регистрации и дату регистрации права на объект недвижимости
+        :return: str
         """
         name_numb_date = []
         if self._extract_object_right is not None:
@@ -409,6 +447,10 @@ class AbstractParcel(ABC):
 
     @property
     def encumbrances(self):
+        """
+        возвращает список ограничений (обременений) прав и лиц, в пользу которых они установлены
+        :return: str
+        """
         obrem = ''
         set_obrem = set()
         list_arendatorov = []
@@ -525,6 +567,10 @@ class AbstractParcel(ABC):
 
     @property
     def encumbrances_name_reg_numb_date_duration(self):
+        """
+        возвращает вид ограничения (обременения), его регистрационный номер, дату регистрации, срок действия
+        :return: str
+        """
         rental_periods = []
         if self._extract_object_right is not None:
             for right in self._extract_object_right.findall(self._dop + 'ExtractObject/' +
@@ -577,6 +623,7 @@ class AbstractParcel(ABC):
     def extract_date(self):
         """
         возвращает дату выгрузки выписки из ЕГРН (день, в который была актуальной информация, содержащаяся  в выписке)
+        :return: str
         """
         date = ''
         if self._extract_object_right is not None:
@@ -589,6 +636,7 @@ class AbstractParcel(ABC):
     def date_of_cadastral_reg(self):
         """
         возвращает дату постановки земельного участка на кадастровый учет
+        :return: str
         """
         date_created = self._parcel.get('DateCreated')
         inverted_date = re.sub('-', '.', date_created)
@@ -597,11 +645,29 @@ class AbstractParcel(ABC):
 
     @property
     def special_notes(self):
+        """
+        возвращает особые отметки о земельном участке в ЕГРН
+        :return: str
+        """
         spec_notes = self._parcel.find(self._dop + 'SpecialNote')
         if spec_notes is not None:
             return spec_notes.text
         else:
             return ''
+
+    @property
+    def estate_objects(self):
+        """
+        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
+        незавершенного строительства
+        :return: str
+        """
+        estate_objects_cad_nums = []
+        inner_cadastral_numbers = self._parcel.find(self._dop + 'InnerCadastralNumbers')
+        if inner_cadastral_numbers is not None:
+            for cadastral_number in inner_cadastral_numbers.findall(self._dop + 'CadastralNumber'):
+                estate_objects_cad_nums.append(cadastral_number.text)
+        return ', '.join(estate_objects_cad_nums)
 
     def _get_geometry_from_spatial_element(self, spatial_elements, dop_cad_num: str, result: dict):
         points_x = []
@@ -655,6 +721,12 @@ class AbstractParcel(ABC):
 
     @property
     def geometry(self):
+        """
+        возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
+        кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
+        pyshp
+        :return: dict
+        """
         result = {}
         composition_ez = self._parcel.find(self._dop + 'CompositionEZ')
         contours = self._parcel.find(self._dop + 'Contours')
@@ -713,6 +785,11 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def parent_cad_number(self):
+        """
+        возвращает для обычного земельного участка - его кадастровый номер,
+        для единого землепользования - кадастровый номер единого землепользования
+        :return: str
+        """
         p_object = self._land_record.find('object')
         common_data = p_object.find('common_data')
         cad_number = common_data.find('cad_number')
@@ -720,6 +797,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def entry_parcels(self):
+        """
+        возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
+        :return: list
+        """
         cadastral_numbers = []
         cad_links = self._land_record.find('cad_links')
         if cad_links is not None:
@@ -734,12 +815,20 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def area(self):
+        """
+        возвращает площадь земельного участка в квадратных метрах
+        :return: str
+        """
         t_area = self._params.find('area')
         value = t_area.find('value')
         return value.text
 
     @property
     def address(self):
+        """
+        возвращает адрес земельного участка в человекочитаемом виде
+        :return: str
+        """
         address = ''
         address_location = self._land_record.find('address_location')
         if address_location is not None:
@@ -751,11 +840,19 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def status(self):
+        """
+        возвращает статус земельного участка (например: учтённый, временный и т.д.)
+        :return: str
+        """
         st = self._root.find('status')
         return st.text
 
     @property
     def category(self):
+        """
+        возвращает категорию земель
+        :return: str
+        """
         t_category = self._params.find('category')
         type = t_category.find('type')
         code = type.find('code')
@@ -763,6 +860,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def permitted_use_by_doc(self):
+        """
+        возвращает вид разрешённого использования (по документу)
+        :return: str
+        """
         permitted_use = self._params.find('permitted_use')
         permitted_use_established = permitted_use.find('permitted_use_established')
         by_document = permitted_use_established.find('by_document')
@@ -770,6 +871,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def owner(self):
+        """
+        возвращает список правообладателей (вид права и лицо, владеющее этим правом)
+        :return: str
+        """
         r_type = ''
         r_type_list = []
         lst_holders = []
@@ -853,6 +958,7 @@ class ParcelEGRN(AbstractParcel):
     def own_name_reg_numb_date(self):
         """
         возвращает вид права, номер регистрации и дату регистрации права на объект недвижимости
+        :return: str
         """
         name_numb_date = []
         name = ''
@@ -882,6 +988,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def encumbrances(self):
+        """
+        возвращает список ограничений (обременений) прав и лиц, в пользу которых они установлены
+        :return: str
+        """
         list_of_encumbrances = []
         subjects_or_right_holders = []
         encumbrance_type = ''
@@ -995,6 +1105,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def encumbrances_name_reg_numb_date_duration(self):
+        """
+        возвращает вид ограничения (обременения), его регистрационный номер, дату регистрации, срок действия
+        :return: str
+        """
         name_numb_date_dur = []
         if self._restrict_records is not None:
             for restrict_record in self._restrict_records.findall('restrict_record'):
@@ -1042,6 +1156,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def date_of_cadastral_reg(self):
+        """
+        возвращает дату постановки земельного участка на кадастровый учет
+        :return: str
+        """
         record_info = self._land_record.find('record_info')
         registration_date = record_info.find('registration_date')
         inverted_date = re.sub('-', '.', registration_date.text[:10])
@@ -1050,6 +1168,10 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def extract_date(self):
+        """
+        возвращает дату выгрузки выписки из ЕГРН (день, в который была актуальной информация, содержащаяся  в выписке)
+        :return: str
+        """
         details_statement = self._root.find('details_statement')
         group_top_requisites = details_statement.find('group_top_requisites')
         date_formation = group_top_requisites.find('date_formation')
@@ -1059,13 +1181,42 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def special_notes(self):
+        """
+        возвращает особые отметки о земельном участке в ЕГРН
+        :return: str
+        """
         spec_notes = self._land_record.find('special_notes')
         if spec_notes is not None:
             return spec_notes.text
         else:
             return ''
 
+    @property
+    def estate_objects(self):
+        """
+        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
+        незавершенного строительства
+        :return: str
+        """
+        cad_numbers = ''
+        cad_links = self._land_record.find('cad_links')
+        if cad_links is not None:
+            included_objects = cad_links.find('included_objects')
+            if included_objects is not None:
+                included_object = included_objects.find('included_object')
+                if included_object is not None:
+                    cad_number_el = included_object.find('cad_number')
+                    if cad_number_el is not None:
+                        cad_numbers = cad_number_el.text
+        return cad_numbers
+
     def _get_geometry_from_spatial_element(self, contour, dop_cad_num: str, result: dict):
+        """
+        извлекает список координат границ полигона в формате, используемом в библиотеке pyshp и записывает их в словарь
+        (ключ - кадастровый номер контура, значение - координаты контура)
+        :param dop_cad_num: str
+        :param result: dict
+        """
         points_x = []
         points_y = []
         num_point = []
@@ -1112,6 +1263,12 @@ class ParcelEGRN(AbstractParcel):
 
     @property
     def geometry(self):
+        """
+        возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
+        кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
+        pyshp
+        :return: dict
+        """
         result = {}
         contours_location = self._land_record.find('contours_location')
         if contours_location is not None:
