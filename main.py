@@ -21,16 +21,16 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
 def logger(func):
-    '''
+    """
     декоратор-логгер, записывает в файл "log.txt" ошибки, возникшие при работе функции, не изменяя имя исходной фукнкции
-    '''
+    """
     @functools.wraps(func)
     def wrapped(arg):
         try:
@@ -145,10 +145,10 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
 
     @logger
     def extract_xml_from_zip(self):
-        '''
+        """
         извлекает выписки из ЕГРН на земельные участки из архива zip, сохраняя исходный архив, удаляя промежуточные
         архивы и файлы ЭЦП
-        '''
+        """
         self.textBrowser.append("Идёт извлечение выписок xml из архивов...")
         directory = get_settings('folder_in_xml')
         files = os.listdir(directory)
@@ -179,9 +179,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
 
     @logger
     def rename_xml(self):
-        '''
+        """
         переименовывает выписки из ЕГРН на земельные участки в формате: кадастровый номер---дата получения выписки
-        '''
+        """
         self.textBrowser.append("Идёт переименование выписок xml...")
         directory = get_settings('folder_in_xml')
         result_files = os.listdir(directory)
@@ -218,7 +218,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         self.textBrowser.append("Готово!")
         if files_do_not_require_renaming > 0:
             self.textBrowser.append('Для ' + str(files_do_not_require_renaming) + ' xml-файлов переименование '
-                                                                                  'не требуется')
+                                    'не требуется')
         self.textBrowser.append("Переименовано " + str(count_successful_files) + ' xml-файлов')
         if count_unsupported_files > 0:
             self.textBrowser.append("Не удалось прочитать " + str(count_unsupported_files) + ' xml-файлов')
@@ -227,14 +227,23 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
 
     @logger
     def start_conv(self):
+        """
+        запускает конвертирование набора выписок на земельные участки из формата xml в выбранные форматы файлов
+        """
+        directory = get_settings('folder_in_xml')
+        starting_xmlfiles = list(filter(lambda x: x.endswith('.xml'), os.listdir(directory)))
         if self.radioButton_zip.isChecked() is False and self.radioButton_xml.isChecked() is False:
             QMessageBox.warning(self, 'Ошибка', "Необходимо выбрать формат обрабатываемых файлов (xml или zip)")
+            return False
+        elif self.radioButton_xml.isChecked() is True and len(starting_xmlfiles) == 0:
+            QMessageBox.warning(self, 'Ошибка', "В указанной папке нет выписок из ЕГРН в формате XML")
             return False
         elif self.radioButton_zip.isChecked():
             self.extract_xml_from_zip()
         if self.checkBoxRename.isChecked():
             self.rename_xml()
         if self.checkBoxExcel.isChecked() or self.checkBoxShape.isChecked():
+            xmlfiles = list(filter(lambda x: x.endswith('.xml'), os.listdir(directory)))
             self.textBrowser.append("Идёт получение данных из выписок XML и запись в выбранные форматы файлов...")
             start_time = time.time()
             now = datetime.datetime.now()
@@ -253,6 +262,25 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                               underline='none',
                               strike=False,
                               color='FF000000')
+                #  описание стиля границы ячейки в таблице MS Excel
+                border_1 = Border(left=Side(border_style='thin',
+                                            color='FF000000'),
+                                  right=Side(border_style='thin',
+                                             color='FF000000'),
+                                  top=Side(border_style='thin',
+                                           color='FF000000'),
+                                  bottom=Side(border_style='thin',
+                                              color='FF000000'),
+                                  diagonal=Side(border_style='thin',
+                                                color='FF000000'),
+                                  diagonal_direction=0,
+                                  outline=Side(border_style='thin',
+                                               color='FF000000'),
+                                  vertical=Side(border_style='thin',
+                                                color='FF000000'),
+                                  horizontal=Side(border_style='thin',
+                                                  color='FF000000')
+                                  )
                 ws['A1'] = 'КН земельного участка'
                 ws['B1'] = 'КН единого землепользования'
                 ws['C1'] = 'Площадь'
@@ -268,8 +296,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws['M1'] = 'Дата постановки на кад. учёт'
                 ws['N1'] = 'Дата получения сведений'
                 ws['O1'] = 'КН расположенных в пределах земельного участка объектов недвижимости'
-                for cellObj in ws['A1':'O1']:
-                    for cell in cellObj:
+                for cell_obj in ws['A1':'O1']:
+                    for cell in cell_obj:
                         cell.fill = fill_1
                         cell.font = font_1
                 ws.column_dimensions['A'].width = 18
@@ -310,8 +338,6 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             xml_errors = []
             pb = 0
             count_successful_files = 0
-            directory = get_settings('folder_in_xml')
-            xmlfiles = list(filter(lambda x: x.endswith('.xml'), os.listdir(directory)))
             self.progressBar.setValue(0)
             for xml_file in xmlfiles:
                 xml_file_path = directory + "\\" + xml_file
@@ -322,15 +348,16 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                     area = parcel.area
                     #  с помощью регулярных выражений удаляем из строк символы табуляции, новой строки
                     #  и возврата каретки
-                    address = re.sub("^\s+|\n|\r|\s+$", '', parcel.address)
-                    status = re.sub("^\s+|\n|\r|\s+$", '', parcel.status)
+                    pattern = "^\s+|\n|\r|\s+$"
+                    address = re.sub(pattern, '', parcel.address)
+                    status = re.sub(pattern, '', parcel.status)
                     category = parcel.category
-                    permitted_use_by_doc = re.sub("^\s+|\n|\r|\s+$", '', parcel.permitted_use_by_doc)
-                    owner = re.sub("^\s+|\n|\r|\s+$", '', parcel.owner)
+                    permitted_use_by_doc = re.sub(pattern, '', parcel.permitted_use_by_doc)
+                    owner = re.sub(pattern, '', parcel.owner)
                     own_name_reg_numb_date = parcel.own_name_reg_numb_date
-                    encumbrances = re.sub("^\s+|\n|\r|\s+$", '', parcel.encumbrances)
+                    encumbrances = re.sub(pattern, '', parcel.encumbrances)
                     encumbrances_name_reg_numb_date_duration = parcel.encumbrances_name_reg_numb_date_duration
-                    special_notes = re.sub("^\s+|\n|\r|\s+$", '', parcel.special_notes)
+                    special_notes = re.sub(pattern, '', parcel.special_notes)
                     date_of_cadastral_reg = parcel.date_of_cadastral_reg
                     extract_date = parcel.extract_date
                     estate_objects = parcel.estate_objects
@@ -373,25 +400,6 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                         else:
                             self.textBrowser.append(f'Выписка {xml_file} не содержит координат границ ЗУ')
                     if self.checkBoxExcel.isChecked():
-                        #  описание стиля границы ячейки в таблице MS Excel
-                        border_1 = Border(left=Side(border_style='thin',
-                                                    color='FF000000'),
-                                          right=Side(border_style='thin',
-                                                     color='FF000000'),
-                                          top=Side(border_style='thin',
-                                                   color='FF000000'),
-                                          bottom=Side(border_style='thin',
-                                                      color='FF000000'),
-                                          diagonal=Side(border_style='thin',
-                                                        color='FF000000'),
-                                          diagonal_direction=0,
-                                          outline=Side(border_style='thin',
-                                                       color='FF000000'),
-                                          vertical=Side(border_style='thin',
-                                                        color='FF000000'),
-                                          horizontal=Side(border_style='thin',
-                                                          color='FF000000')
-                                          )
                         if not entry_parcels:
                             row_numb += 1
                             ws['A' + str(row_numb)] = parent_cad_number
@@ -435,12 +443,12 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 pb += 1
                 self.progressBar.setValue((pb / len(xmlfiles)) * 100)
             if self.checkBoxExcel.isChecked():
-                for cellObj in ws['A1':'O' + str(row_numb)]:
-                    for cell in cellObj:
+                for cell_obj in ws['A1':'O' + str(row_numb)]:
+                    for cell in cell_obj:
                         cell.border = border_1
                         cell.alignment = Alignment(wrapText=True)  # задаёт выравнивание "перенос по словам"
                 wb.save(directory_out + "\\" + now.strftime("%d_%m_%Y  %H-%M") +
-                            " земельные участки из ЕГРН.xlsx")
+                        " земельные участки из ЕГРН.xlsx")
             if self.checkBoxShape.isChecked():
                 shp_wr.close()
             self.textBrowser.append("Получение данных из выписок XML завершено!" + chr(13) +

@@ -1,13 +1,13 @@
 from abc import ABC
 import re
 import xml.etree.ElementTree as ElT
-from logic import get_dict_from_csv, settings_from_json, gauss_area
+from logic import get_dict_from_csv, gauss_area
 
 __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -29,7 +29,6 @@ class AbstractParcel(ABC):
         self.permitted_use_classifier = get_dict_from_csv('utilization.csv')  # коды видов разрешённого использования
         self.rights_classifier = get_dict_from_csv('right.csv')  # коды видов прав
         self.encumbrance_classifier = get_dict_from_csv('encumbrance.csv')  # коды видов ограничений (обременений)
-        self.settings = settings_from_json()
 
     @staticmethod
     def create_a_parcel_object(xml_file_path: str):
@@ -344,7 +343,7 @@ class AbstractParcel(ABC):
                 list_dolevikov_new.append(result)
         # Для земель лесного или водного фонда собственником по умолчанию является РФ
         if (cell_owner == [] and self.category == 'Земли лесного фонда') or (cell_owner == [] and
-                                                                             self.category == 'Земли водного фонда'):
+            self.category == 'Земли водного фонда'):
             cell_owner.append('Собственность РФ')
         # ИСПРАВИТЬ, должно определяться настройками
         # Для участков, на которые не зарегистрированы права, указываем правообладателем администрацию района

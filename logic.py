@@ -2,8 +2,22 @@ import re
 import json
 import csv
 
+__author__ = "Dmitry S. Korottsev"
+__copyright__ = "Copyright 2019"
+__credits__ = []
+__license__ = "GPL v3"
+__version__ = "1.1"
+__maintainer__ = "Dmitry S. Korottsev"
+__email__ = "dm-korottev@yandex.ru"
+__status__ = "Development"
+
 
 def get_dict_from_csv(filepath):
+    """
+    создаёт словарь Python из csv-файла c 2-мя столбцами и разделителем '|'
+    :param filepath: str
+    :return: dict
+    """
     with open(filepath, "r", newline="") as file:
         reader = csv.reader(file, delimiter='|', quoting=csv.QUOTE_NONE)
         dic = {row[0]: row[1] for row in reader}
@@ -11,6 +25,9 @@ def get_dict_from_csv(filepath):
 
 
 def write_settings(key, value):
+    """
+    сохраняет настройки программы в файл 'settings.json'
+    """
     with open('settings.json', 'r') as f:
         sd = json.load(f)
     sd[key] = value
@@ -19,18 +36,21 @@ def write_settings(key, value):
 
 
 def get_settings(key):
+    """
+    возвращает значение параметра настройки программы по указанному ключу, сохранённое в файле 'settings.json'
+    :param key: str
+    """
     with open('settings.json', 'r') as f:
         sd = json.load(f)
     return sd[key]
 
 
-def settings_from_json():
-    with open('settings.json', 'r') as f:
-        sd = json.load(f)
-    return sd
-
-
 def to_shorten_a_long_name(names):
+    """
+    сокращает слова и словосочетания в соответствии со словарём сокращений, заданным в файле 'replace.csv'
+    :param names: list or str
+    :return: list or str
+    """
     dictionary_of_abbreviations = get_dict_from_csv('replace.csv')
     if isinstance(names, list):
         for old_name in dictionary_of_abbreviations:
@@ -47,11 +67,12 @@ def to_shorten_a_long_name(names):
 
 
 def gauss_area(polygon_points):
-    '''
+    """
     Формула площади Гаусса, определяет площадь простого многоугольника по декартовым координатам на плоскости
     В правой системе координат положительный знак площади указывает направление точек против часовой стрелки,
     отрицательный - направление точек по часовой стрелке
-    '''
+    :return: float
+    """
     one = sum([polygon_points[i][0] * polygon_points[i + 1][1] for i in range(len(polygon_points) - 1)])
     two = sum([polygon_points[i][1] * polygon_points[i + 1][0] for i in range(len(polygon_points) - 1)])
     return (two - one) / 2
