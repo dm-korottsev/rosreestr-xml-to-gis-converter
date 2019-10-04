@@ -283,7 +283,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                   )
                 ws['A1'] = 'КН земельного участка'
                 ws['B1'] = 'КН единого землепользования'
-                ws['C1'] = 'Площадь'
+                ws['C1'] = 'Площадь, м2'
                 ws['D1'] = 'Адрес'
                 ws['E1'] = 'Статус'
                 ws['F1'] = 'Категория земель'
@@ -296,7 +296,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws['M1'] = 'Дата постановки на кад. учёт'
                 ws['N1'] = 'Дата получения сведений'
                 ws['O1'] = 'КН расположенных в пределах земельного участка объектов недвижимости'
-                for cell_obj in ws['A1':'O1']:
+                ws['P1'] = 'Кадастровая стоимость, руб.'
+                for cell_obj in ws['A1':'P1']:
                     for cell in cell_obj:
                         cell.fill = fill_1
                         cell.font = font_1
@@ -315,6 +316,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws.column_dimensions['M'].width = 14
                 ws.column_dimensions['N'].width = 14
                 ws.column_dimensions['O'].width = 18
+                ws.column_dimensions['P'].width = 14
                 row_numb = 1
             if self.checkBoxShape.isChecked():
                 shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
@@ -335,6 +337,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 shp_wr.field('DatOfCreat', 'D')
                 shp_wr.field('DateOfGet', 'D')
                 shp_wr.field('EstateObjs', 'C', size=255)
+                shp_wr.field('CadastCost', 'C', size=50)
             xml_errors = []
             pb = 0
             count_successful_files = 0
@@ -361,6 +364,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                     date_of_cadastral_reg = parcel.date_of_cadastral_reg
                     extract_date = parcel.extract_date
                     estate_objects = parcel.estate_objects
+                    cadastral_cost = parcel.cadastral_cost
                     if self.checkBoxReplace.isChecked():
                         address = to_shorten_a_long_name(address)
                         permitted_use_by_doc = to_shorten_a_long_name(permitted_use_by_doc)
@@ -396,7 +400,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                               status, category, permitted_use_by_doc, owner, own_name_reg_numb_date,
                                               encumbrances, encumbrances_name_reg_numb_date_duration, special_notes,
                                               datetime.date(int(year1), int(month1), int(day1)),
-                                              datetime.date(int(year2), int(month2), int(day2)), estate_objects)
+                                              datetime.date(int(year2), int(month2), int(day2)), estate_objects,
+                                              cadastral_cost)
                         else:
                             self.textBrowser.append(f'Выписка {xml_file} не содержит координат границ ЗУ')
                     if self.checkBoxExcel.isChecked():
@@ -417,6 +422,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                             ws['M' + str(row_numb)] = date_of_cadastral_reg
                             ws['N' + str(row_numb)] = extract_date
                             ws['O' + str(row_numb)] = estate_objects
+                            ws['P' + str(row_numb)] = cadastral_cost
                         else:
                             for parcel_cad_number in entry_parcels:
                                 row_numb += 1
@@ -435,6 +441,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                 ws['M' + str(row_numb)] = date_of_cadastral_reg
                                 ws['N' + str(row_numb)] = extract_date
                                 ws['O' + str(row_numb)] = estate_objects
+                                ws['P' + str(row_numb)] = cadastral_cost
                     if self.checkBoxShape.isChecked():
                         pass
                     count_successful_files += 1
@@ -443,7 +450,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 pb += 1
                 self.progressBar.setValue((pb / len(xmlfiles)) * 100)
             if self.checkBoxExcel.isChecked():
-                for cell_obj in ws['A1':'O' + str(row_numb)]:
+                for cell_obj in ws['A1':'P' + str(row_numb)]:
                     for cell in cell_obj:
                         cell.border = border_1
                         cell.alignment = Alignment(wrapText=True)  # задаёт выравнивание "перенос по словам"

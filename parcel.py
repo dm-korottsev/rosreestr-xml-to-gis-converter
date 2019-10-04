@@ -163,6 +163,19 @@ class AbstractParcel(ABC):
         return utiliz_by_doc
 
     @property
+    def cadastral_cost(self):
+        """
+        возвращает кадастровую стоимость земельного участка (в рублях)
+        :return: str
+        """
+        cad_cost = self._parcel.find(self._dop + 'CadastralCost')
+        if cad_cost is not None:
+            cad_cost_value = cad_cost.get('Value')
+        else:
+            cad_cost_value = ''
+        return cad_cost_value
+
+    @property
     def owner(self):
         """
         возвращает список правообладателей (вид права и лицо, владеющее этим правом)
@@ -867,6 +880,20 @@ class ParcelEGRN(AbstractParcel):
         permitted_use_established = permitted_use.find('permitted_use_established')
         by_document = permitted_use_established.find('by_document')
         return by_document.text
+
+    @property
+    def cadastral_cost(self):
+        """
+        возвращает кадастровую стоимость земельного участка (в рублях)
+        :return: str
+        """
+        cad_cost = self._land_record.find('cost')
+        if cad_cost is not None:
+            value = cad_cost.find('value')
+            cad_cost_value = value.text
+        else:
+            cad_cost_value = ''
+        return cad_cost_value
 
     @property
     def owner(self):
