@@ -647,10 +647,13 @@ class AbstractParcel(ABC):
     @property
     def date_of_cadastral_reg(self):
         """
-        возвращает дату постановки земельного участка на кадастровый учет
+        возвращает дату постановки земельного участка на кадастровый учет (дату присвоения кадастрового номера)
         :return: str
         """
-        date_created = self._parcel.get('DateCreated')
+        if self._parcel.get('DateCreated', None):
+            date_created = self._parcel.get('DateCreated')
+        elif self._parcel.get('DateCreatedDoc', None):
+            date_created = self._parcel.get('DateCreatedDoc')
         inverted_date = re.sub('-', '.', date_created)
         date = ".".join(inverted_date.split(".")[::-1])
         return date
