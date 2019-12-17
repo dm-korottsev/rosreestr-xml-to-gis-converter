@@ -826,6 +826,14 @@ class ParcelEGRN(AbstractParcel):
                 for included_cad_number in included_cad_numbers.findall('included_cad_number'):
                     cad_number = included_cad_number.find('cad_number')
                     cadastral_numbers.append(cad_number.text)
+        # если КН ЗУ, входящих в единое землепользование, указаны только в особых отметках, берём их оттуда
+        if not cadastral_numbers:
+            sp_notes = self.special_notes
+            text = r"Кадастровые номера обособленных \(условных\) участков, входящих в единое землепользование:"
+            if re.search(text, sp_notes):
+                lst_cad_n = re.findall(r"\d+:\d+:\d+:\d+", sp_notes)
+                for entry_cad_n in lst_cad_n:
+                    cadastral_numbers.append(entry_cad_n)
         return cadastral_numbers
 
     @property
@@ -1007,7 +1015,6 @@ class ParcelEGRN(AbstractParcel):
                 registration_date = record_info.find('registration_date')
                 if registration_date is not None:
                     date = registration_date.text
-
                 if name != '' or numb != '' or date != '':
                     name_numb_date.append(name + ' №' + numb + ' от ' + date)
         if not name_numb_date:
