@@ -389,6 +389,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                 if re.search(r'\(', key):
                                     shp_cad_number = key[:key.index('(')]
                                     num_of_cont = key[key.index('('):]
+                                elif not re.search(":", key):
+                                    shp_cad_number = parent_cad_number
+                                    num_of_cont = key
                                 else:
                                     shp_cad_number = key
                                     num_of_cont = ''
