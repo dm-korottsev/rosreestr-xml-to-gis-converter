@@ -677,7 +677,8 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Конвертер XML выписок из ЕГРН на земельные участки. Версия: 1.1"))
+        MainWindow.setWindowTitle(_translate("MainWindow",
+                                             "Конвертер XML выписок из ЕГРН на земельные участки. Версия: 1.2"))
         self.btnStart.setText(_translate("MainWindow", "Начать обработку!"))
         self.label_t1.setText(_translate("MainWindow", "Результат сохраняем в:"))
         self.label_out.setText(_translate("MainWindow", "Папка не выбрана"))
@@ -687,14 +688,22 @@ class Ui_MainWindow(object):
         self.btnBrowseOut.setText(_translate("MainWindow", "Выбор папки для сохранения результата"))
         self.radioButton_zip.setText(_translate("MainWindow", "ZIP (не распакованные выписки)"))
         self.radioButton_xml.setText(_translate("MainWindow", "XML (распакованные выписки)"))
-        self.checkBoxAdm.setText(_translate("MainWindow", "Указать для ЗУ с незарегистрированными правами правообладателем администрацию района"))
-        self.label_2.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">3. Выберите требуемые форматы выходных файлов:</span></p></body></html>"))
-        self.checkBoxExcel.setText(_translate("MainWindow", "XLSX (таблица Microsoft Excel 2007 и более поздних версий)"))
-        self.label_3.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">4. Прочие настройки:</span></p></body></html>"))
-        self.label_4.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">1. Выберите директории для работы:</span></p></body></html>"))
-        self.label_5.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">2. Выберите формат обрабатываемых файлов:</span></p></body></html>"))
-        self.checkBoxRename.setText(_translate("MainWindow", "Переименовать исходные файлы XML в соответствии с кадастровым номером и датой получения"))
-        self.label.setText(_translate("MainWindow", "© Д.С. Коротцев, 2019"))
-        self.checkBoxReplace.setText(_translate("MainWindow", "Сократить длинные названия (например: \"Акционерное общество\" ---> \"АО\")"))
+        self.checkBoxAdm.setText(_translate("MainWindow",
+                                            "Указать для ЗУ с незарегистрированными правами правообладателем администрацию района"))
+        self.label_2.setText(_translate("MainWindow",
+                                        "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">3. Выберите требуемые форматы выходных файлов:</span></p></body></html>"))
+        self.checkBoxExcel.setText(_translate("MainWindow",
+                                              "XLSX (таблица Microsoft Excel 2007 и более поздних версий)"))
+        self.label_3.setText(_translate("MainWindow",
+                                        "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">4. Прочие настройки:</span></p></body></html>"))
+        self.label_4.setText(_translate("MainWindow",
+                                        "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">1. Выберите директории для работы:</span></p></body></html>"))
+        self.label_5.setText(_translate("MainWindow",
+                                        "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">2. Выберите формат обрабатываемых файлов:</span></p></body></html>"))
+        self.checkBoxRename.setText(_translate("MainWindow",
+                                               "Переименовать исходные файлы XML в соответствии с кадастровым номером и датой получения"))
+        self.label.setText(_translate("MainWindow", "© Д.С. Коротцев, 2020"))
+        self.checkBoxReplace.setText(_translate("MainWindow",
+                                                "Сократить длинные названия (например: \"Акционерное общество\" ---> \"АО\")"))
         self.checkBoxShape.setText(_translate("MainWindow", "SHP (Esri Shapefile, используется в ArcGIS, QGIS)"))
 

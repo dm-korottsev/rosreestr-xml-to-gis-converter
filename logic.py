@@ -1,12 +1,13 @@
 import re
 import json
 import csv
+from zipfile import is_zipfile, ZipFile
 
 __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.1"
+__version__ = "1.2"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -76,3 +77,16 @@ def gauss_area(polygon_points):
     one = sum([polygon_points[i][0] * polygon_points[i + 1][1] for i in range(len(polygon_points) - 1)])
     two = sum([polygon_points[i][1] * polygon_points[i + 1][0] for i in range(len(polygon_points) - 1)])
     return (two - one) / 2
+
+
+def extract_all_zipfiles(names_of_zipfiles, folder):
+    """
+    Распаковывает все указанные zip-архивы в указанной папке. Входящие аргументы: список имён архивов, которые надо
+    распаковать и полный путь к папке, в которой они лежат.
+    :param names_of_zipfiles: list
+    :param folder: str
+    """
+    for zf in names_of_zipfiles:
+        if is_zipfile(folder + '//' + zf):
+            with ZipFile(folder + '//' + zf, 'r') as z:
+                z.extractall(folder)

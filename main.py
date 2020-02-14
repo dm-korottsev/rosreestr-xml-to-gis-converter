@@ -8,20 +8,22 @@ import re
 import datetime
 import time
 import json
-from zipfile import *
 import shapefile
 import functools
 from traceback import format_exc
-from logic import write_settings, get_settings, to_shorten_a_long_name
+from logic import write_settings, get_settings, to_shorten_a_long_name, extract_all_zipfiles
 from parcel import AbstractParcel
 import graphic_interface
 
+# делаем текущей директорией для работы ту папку, в которой лежит файл скрипта
+path_to_current_file = os.path.realpath(__file__)
+os.chdir(os.path.split(path_to_current_file)[0])
 
 __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.1"
+__version__ = "1.2"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -153,19 +155,13 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         directory = get_settings('folder_in_xml')
         files = os.listdir(directory)
         zipfiles = list(filter(lambda x: x.endswith('.zip'), files))
-        for zf in zipfiles:
-            if is_zipfile(directory + '//' + zf):
-                with ZipFile(directory + '//' + zf, 'r') as z:
-                    z.extractall(directory)
+        extract_all_zipfiles(zipfiles, directory)
         new_files = os.listdir(directory)
         new_zipfiles = list(filter(lambda x: x.endswith('.zip'), new_files))
         for i in new_zipfiles:
             if i in zipfiles:
                 new_zipfiles.remove(i)
-        for zf in new_zipfiles:
-            if is_zipfile(directory + '//' + zf):
-                with ZipFile(directory + '//' + zf, 'r') as z:
-                    z.extractall(directory)
+        extract_all_zipfiles(new_zipfiles, directory)
         result_files = os.listdir(directory)
         sig_files = list(filter(lambda x: x.endswith('.sig'), result_files))
         for sf in sig_files:

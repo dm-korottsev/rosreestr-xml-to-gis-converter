@@ -1,5 +1,6 @@
 from abc import ABC
 import re
+import json
 import xml.etree.ElementTree as ElT
 from logic import get_dict_from_csv, gauss_area
 
@@ -7,14 +8,14 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2019"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.1"
+__version__ = "1.2"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
 class AbstractParcel(ABC):
-    def __init__(self, xml_file_path, root, dop):
+    def __init__(self, xml_file_path, settings, root, dop):
         self.xml_file_path = xml_file_path
         self._root = root
         self._dop = dop
@@ -23,6 +24,7 @@ class AbstractParcel(ABC):
         self._namespaces = dict()
         self._adr = ''
         self._spat = ''
+        self._settings = settings
         self.codes_of_rf_regions = get_dict_from_csv('region.csv')  # коды регионов РФ
         self.status_classifier = get_dict_from_csv('status.csv')  # коды статусов земельных участков
         self.land_category_classifier = get_dict_from_csv('land_category.csv')  # коды категорий земель
@@ -40,12 +42,14 @@ class AbstractParcel(ABC):
         root = tree.getroot()
         d1 = '{urn://x-artefacts-rosreestr-ru/outgoing/kvzu/7.0.1}'
         d2 = '{urn://x-artefacts-rosreestr-ru/outgoing/kpzu/6.0.1}'
+        with open('settings.json', 'r') as f:
+            sd = json.load(f)
         if root.find(d1 + 'Parcels/' + d1 + 'Parcel') is not None:
-            return ParcelKVZU(xml_file_path, root, d1)
+            return ParcelKVZU(xml_file_path, sd, root, d1)
         elif root.find(d2 + 'Parcel') is not None:
-            return ParcelKPZU(xml_file_path, root, d2)
+            return ParcelKPZU(xml_file_path, sd, root, d2)
         elif root.find('land_record') is not None:
-            return ParcelEGRN(xml_file_path, root, None)
+            return ParcelEGRN(xml_file_path, sd, root, None)
         else:
             return None
 
@@ -356,21 +360,22 @@ class AbstractParcel(ABC):
                 list_dolevikov_new.append(result)
         # Для земель лесного или водного фонда собственником по умолчанию является РФ
         if (cell_owner == [] and self.category == 'Земли лесного фонда') or (cell_owner == [] and
-            self.category == 'Земли водного фонда'):
+                                                                             self.category == 'Земли водного фонда'):
             cell_owner.append('Собственность РФ')
-        # ИСПРАВИТЬ, должно определяться настройками
         # Для участков, на которые не зарегистрированы права, указываем правообладателем администрацию района
+        # (если включены соответствующие настройки программы)
         elif not cell_owner:
-            if re.search(r"[\w-]+ий", self.district_name):
-                match = re.search(r"[\w-]+ий", self.district_name)
-                name_r = match.group()
-                result = "Администрация " + re.sub('ий', 'ого', name_r + " района")
-                cell_owner.append(result)
-            elif re.search(r"[\w-]+ой", self.district_name):
-                match = re.search(r"[\w-]+ой", self.district_name)
-                name_r = match.group()
-                result = "Администрация " + re.sub('ой', 'ого', name_r + " района")
-                cell_owner.append(result)
+            if self._settings["adm_district"]:
+                if re.search(r"[\w-]+ий", self.district_name):
+                    match = re.search(r"[\w-]+ий", self.district_name)
+                    name_r = match.group()
+                    result = "Администрация " + re.sub('ий', 'ого', name_r + " района")
+                    cell_owner.append(result)
+                elif re.search(r"[\w-]+ой", self.district_name):
+                    match = re.search(r"[\w-]+ой", self.district_name)
+                    name_r = match.group()
+                    result = "Администрация " + re.sub('ой', 'ого', name_r + " района")
+                    cell_owner.append(result)
         if type_sobstv == 'Долевая собственность':
             if len(list_type_sobstv) == 1 and len(list_owner) == 1:
                 return cell_owner[0]
@@ -759,8 +764,8 @@ class AbstractParcel(ABC):
 
 
 class ParcelKVZU(AbstractParcel):
-    def __init__(self, xml_file_path, root, dop):
-        super().__init__(xml_file_path, root, dop)
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
         self._parcel = self._root.find(self._dop + 'Parcels/' + self._dop + 'Parcel')
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'smev': 'urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1',
@@ -775,8 +780,8 @@ class ParcelKVZU(AbstractParcel):
 
 
 class ParcelKPZU(AbstractParcel):
-    def __init__(self, xml_file_path, root, dop):
-        super().__init__(xml_file_path, root, dop)
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
         self._parcel = self._root.find(self._dop + 'Parcel')
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'ns5': "urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1",
@@ -791,8 +796,8 @@ class ParcelKPZU(AbstractParcel):
 
 
 class ParcelEGRN(AbstractParcel):
-    def __init__(self, xml_file_path, root, dop):
-        super().__init__(xml_file_path, root, dop)
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
         self._land_record = self._root.find('land_record')
         self._params = self._land_record.find('params')
         self._right_records = self._root.find('right_records')
