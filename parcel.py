@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ElT
 from logic import get_dict_from_csv, gauss_area
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2019"
+__copyright__ = "Copyright 2020"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.2"
+__version__ = "1.3"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -238,8 +238,9 @@ class AbstractParcel(ABC):
                                                         nname = content_p.text
                                                         list_sovm_sobsv.append(nname)
                                                     if child.tag == self._dop + 'Organization':
-                                                        names = child.find(self._dop + 'Name')
+                                                        names = child.find(self._dop + 'Content')
                                                         nname = names.text
+                                                        nname = re.sub(", ИНН", " ИНН", nname)
                                                         list_sovm_sobsv.append(nname)
                                                     if child.tag == self._dop + 'Governance':
                                                         names = child.find(self._dop + 'Name')
@@ -259,8 +260,9 @@ class AbstractParcel(ABC):
                                     if proverka.text != '001003000000':
                                         list_owner.append(nname)
                             if child.tag == self._dop + 'Organization':
-                                names = child.find(self._dop + 'Name')
+                                names = child.find(self._dop + 'Content')
                                 nname = names.text
+                                nname = re.sub(", ИНН", " ИНН", nname)
                                 proverka = right.find(self._dop + 'Registration/' + self._dop + 'Type')
                                 if proverka is not None:
                                     if proverka.text != '001003000000':
@@ -505,8 +507,9 @@ class AbstractParcel(ABC):
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
                                         list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
                                 if child.tag == self._dop + 'Organization':
-                                    content = child.find(self._dop + 'Name')
+                                    content = child.find(self._dop + 'Content')
                                     nname = content.text
+                                    nname = re.sub(", ИНН", " ИНН", nname)
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
                                         list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
                                 if child.tag == self._dop + 'Governance':
@@ -970,7 +973,10 @@ class ParcelEGRN(AbstractParcel):
                                 entity = childs.find('entity')
                                 resident = entity.find('resident')
                                 name = resident.find('name')
-                                if name is not None:
+                                inn = resident.find('inn')
+                                if name is not None and inn is not None:
+                                    lst_holders.append(name.text + " ИНН: " + inn.text)
+                                elif name is not None:
                                     lst_holders.append(name.text)
                             elif childs.tag == 'another':  # Иной субъект права
                                 pass
@@ -1081,7 +1087,11 @@ class ParcelEGRN(AbstractParcel):
                             for entity_out in entity:
                                 if entity_out.tag == 'resident' or entity_out.tag == 'not_resident':  # юр. лицо
                                     name = entity_out.find('name')
-                                    if name is not None:
+                                    inn = entity_out.find('inn')
+                                    if name is not None and inn is not None:
+                                        list_of_encumbrances.append(encumbrance_type + ' ' + name.text + " ИНН: " +
+                                                                    inn.text)
+                                    elif name is not None:
                                         list_of_encumbrances.append(encumbrance_type + ' ' + name.text)
                                 elif entity_out.tag == 'govement_entity':  # Орган государственной власти, орган МСУ
                                     full_name = entity_out.find('full_name')
