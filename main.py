@@ -23,7 +23,7 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2020"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.3"
+__version__ = "1.4"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -320,7 +320,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 shp_wr.field('Parcel_KN', 'C', size=20)
                 shp_wr.field('SnglUseKN', 'C', size=20)
                 shp_wr.field('NumOfCont', 'C', size=20)
-                shp_wr.field('Area', 'N')
+                shp_wr.field('Area', 'N', 20, 2)
                 shp_wr.field('Note', 'C', size=255)
                 shp_wr.field('Parcel_St', 'C', size=255)
                 shp_wr.field('Category', 'C', size=40)
@@ -395,7 +395,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                     shp_parent_cad_number = ''
                                 else:
                                     shp_parent_cad_number = parent_cad_number
-                                shp_wr.record(shp_cad_number, shp_parent_cad_number, num_of_cont, int(area), address,
+                                shp_wr.record(shp_cad_number, shp_parent_cad_number, num_of_cont, float(area), address,
                                               status, category, permitted_use_by_doc, owner, own_name_reg_numb_date,
                                               encumbrances, encumbrances_name_reg_numb_date_duration, special_notes,
                                               datetime.date(int(year1), int(month1), int(day1)),

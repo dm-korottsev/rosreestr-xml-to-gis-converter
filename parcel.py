@@ -8,7 +8,7 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2020"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.3"
+__version__ = "1.4"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -885,9 +885,12 @@ class ParcelEGRN(AbstractParcel):
         :return: str
         """
         t_category = self._params.find('category')
-        type = t_category.find('type')
-        code = type.find('code')
-        return self.land_category_classifier[code.text]
+        if t_category is not None:
+            type = t_category.find('type')
+            code = type.find('code')
+            return self.land_category_classifier[code.text]
+        else:
+            return ''
 
     @property
     def permitted_use_by_doc(self):
@@ -896,9 +899,12 @@ class ParcelEGRN(AbstractParcel):
         :return: str
         """
         permitted_use = self._params.find('permitted_use')
-        permitted_use_established = permitted_use.find('permitted_use_established')
-        by_document = permitted_use_established.find('by_document')
-        return by_document.text
+        if permitted_use is not None:
+            permitted_use_established = permitted_use.find('permitted_use_established')
+            by_document = permitted_use_established.find('by_document')
+            return by_document.text
+        else:
+            return ''
 
     @property
     def cadastral_cost(self):

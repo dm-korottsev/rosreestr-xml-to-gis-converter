@@ -678,7 +678,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow",
-                                             "Конвертер XML выписок из ЕГРН на земельные участки. Версия: 1.3"))
+                                             "Конвертер XML выписок из ЕГРН на земельные участки. Версия: 1.4"))
         self.btnStart.setText(_translate("MainWindow", "Начать обработку!"))
         self.label_t1.setText(_translate("MainWindow", "Результат сохраняем в:"))
         self.label_out.setText(_translate("MainWindow", "Папка не выбрана"))
