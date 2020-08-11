@@ -114,17 +114,20 @@ class AbstractParcel(ABC):
             if address == ',':
                 address = ''
         else:
-            region = t_address.find(self._adr + ':Region', self._namespaces)
-            district = t_address.find(self._adr + ':District', self._namespaces)
-            locality = t_address.find(self._adr + ':Locality', self._namespaces)
-            if region is not None and district is not None and locality is not None:
-                address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
-                          district.get('Type') + ', ' + locality.get('Type') + ' ' + locality.get('Name')
-            elif region is not None and district is not None:
-                address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
-                          district.get('Type')
-            elif region is not None:
-                address = self.codes_of_rf_regions[region.text]
+            if t_address is not None:
+                region = t_address.find(self._adr + ':Region', self._namespaces)
+                district = t_address.find(self._adr + ':District', self._namespaces)
+                locality = t_address.find(self._adr + ':Locality', self._namespaces)
+                if region is not None and district is not None and locality is not None:
+                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
+                              district.get('Type') + ', ' + locality.get('Type') + ' ' + locality.get('Name')
+                elif region is not None and district is not None:
+                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
+                              district.get('Type')
+                elif region is not None:
+                    address = self.codes_of_rf_regions[region.text]
+                else:
+                    address = ''
             else:
                 address = ''
         return address
