@@ -479,7 +479,9 @@ def main():
         with open('settings.json', 'w') as f:
             json.dump(s_dic, f, sort_keys=True, indent=4, ensure_ascii=False)
 
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     app = QtWidgets.QApplication(sys.argv)  # новый экземпляр QApplication
+    app.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)  # автоматически адаптирует интерфейс для 4K монитора
     window = ConvXMLApp()  # создаём объект класса ConvXMLApp
     window.show()  # показываем окно
     window.setFixedSize(559, 852)  # устанавливаем фиксированный размер окна
