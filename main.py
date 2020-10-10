@@ -316,14 +316,14 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 row_numb = 1
             if self.checkBoxShape.isChecked():
                 shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
-                                          shapeType=shapefile.POLYGON, encoding="utf-8")
+                                          shapeType=shapefile.POLYGON, encoding="cp1251")
                 shp_wr.field('Parcel_KN', 'C', size=20)
                 shp_wr.field('SnglUseKN', 'C', size=20)
                 shp_wr.field('NumOfCont', 'C', size=20)
                 shp_wr.field('Area', 'N', 20, 2)
                 shp_wr.field('Note', 'C', size=255)
                 shp_wr.field('Parcel_St', 'C', size=255)
-                shp_wr.field('Category', 'C', size=40)
+                shp_wr.field('Category', 'C', size=255)
                 shp_wr.field('ByDoc', 'C', size=255)
                 shp_wr.field('Owner', 'C', size=255)
                 shp_wr.field('OwnRightN', 'C', size=255)
