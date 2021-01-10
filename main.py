@@ -13,6 +13,7 @@ import functools
 from traceback import format_exc
 from logic import write_settings, get_settings, to_shorten_a_long_name, extract_all_zipfiles
 from parcel import AbstractParcel
+from object_of_capital_construction import AbstractOCC
 import graphic_interface
 
 # делаем текущей директорией для работы ту папку, в которой лежит файл скрипта
@@ -20,10 +21,10 @@ path_to_current_file = os.path.realpath(__file__)
 os.chdir(os.path.split(path_to_current_file)[0])
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2020"
+__copyright__ = "Copyright 2021"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.4"
+__version__ = "1.5"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -188,10 +189,14 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         xmlfiles = list(filter(lambda x: x.endswith('.xml'), result_files))
         for file_name in xmlfiles:
             xml_file_path = directory + "\\" + file_name
-            parcel = AbstractParcel.create_a_parcel_object(xml_file_path)
-            if parcel is not None:
-                parcel_kn = parcel.parent_cad_number
-                extract_date = parcel.extract_date
+            real_estate_object = None
+            if AbstractParcel.create_a_parcel_object(xml_file_path):
+                real_estate_object = AbstractParcel.create_a_parcel_object(xml_file_path)
+            elif AbstractOCC.create_an_occ_object(xml_file_path):
+                real_estate_object = AbstractOCC.create_an_occ_object(xml_file_path)
+            if real_estate_object is not None:
+                parcel_kn = real_estate_object.parent_cad_number
+                extract_date = real_estate_object.extract_date
                 pkn = re.sub(':', '-', parcel_kn)
                 ed = re.sub('\.', '-', extract_date)
                 new_name = pkn + '---' + ed + '.xml'
@@ -277,8 +282,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                   horizontal=Side(border_style='thin',
                                                   color='FF000000')
                                   )
-                ws['A1'] = 'КН земельного участка'
-                ws['B1'] = 'КН единого землепользования'
+                ws['A1'] = 'Кадастровый номер'
+                ws['B1'] = 'Кадастровый номер единого землепользования'
                 ws['C1'] = 'Площадь, м2'
                 ws['D1'] = 'Адрес'
                 ws['E1'] = 'Статус'
@@ -291,14 +296,15 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws['L1'] = 'Особые отметки'
                 ws['M1'] = 'Дата постановки на кад. учёт'
                 ws['N1'] = 'Дата получения сведений'
-                ws['O1'] = 'КН расположенных в пределах земельного участка объектов недвижимости'
+                ws['O1'] = 'КН расположенных в пределах ЗУ или ОКС объектов недвижимости'
                 ws['P1'] = 'Кадастровая стоимость, руб.'
-                for cell_obj in ws['A1':'P1']:
+                ws['Q1'] = 'Вид объекта недвижимости'
+                for cell_obj in ws['A1':'Q1']:
                     for cell in cell_obj:
                         cell.fill = fill_1
                         cell.font = font_1
                 ws.column_dimensions['A'].width = 18
-                ws.column_dimensions['B'].width = 18
+                ws.column_dimensions['B'].width = 19
                 ws.column_dimensions['C'].width = 10
                 ws.column_dimensions['D'].width = 35
                 ws.column_dimensions['E'].width = 16
@@ -313,12 +319,13 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws.column_dimensions['N'].width = 14
                 ws.column_dimensions['O'].width = 18
                 ws.column_dimensions['P'].width = 14
+                ws.column_dimensions['Q'].width = 20
                 row_numb = 1
             if self.checkBoxShape.isChecked():
-                shp_wr = shapefile.Writer(directory_out + "\\" + 'zem_uch_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
+                shp_wr = shapefile.Writer(directory_out + "\\" + 'real_estate_objects_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
                                           shapeType=shapefile.POLYGON, encoding="cp1251")
-                shp_wr.field('Parcel_KN', 'C', size=20)
-                shp_wr.field('SnglUseKN', 'C', size=20)
+                shp_wr.field('CadNumber', 'C', size=20)
+                shp_wr.field('SnglUseCN', 'C', size=20)
                 shp_wr.field('NumOfCont', 'C', size=20)
                 shp_wr.field('Area', 'N', 20, 2)
                 shp_wr.field('Note', 'C', size=255)
@@ -334,33 +341,39 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 shp_wr.field('DateOfGet', 'D')
                 shp_wr.field('EstateObjs', 'C', size=255)
                 shp_wr.field('CadastCost', 'C', size=50)
+                shp_wr.field('Type', 'C', size=60)
             xml_errors = []
             pb = 0
             count_successful_files = 0
             self.progressBar.setValue(0)
             for xml_file in xmlfiles:
                 xml_file_path = directory + "\\" + xml_file
-                parcel = AbstractParcel.create_a_parcel_object(xml_file_path)
-                if parcel is not None:
-                    parent_cad_number = parcel.parent_cad_number
-                    entry_parcels = parcel.entry_parcels
-                    area = parcel.area
+                real_estate_object = None
+                if AbstractParcel.create_a_parcel_object(xml_file_path):
+                    real_estate_object = AbstractParcel.create_a_parcel_object(xml_file_path)
+                elif AbstractOCC.create_an_occ_object(xml_file_path):
+                    real_estate_object = AbstractOCC.create_an_occ_object(xml_file_path)
+                if real_estate_object is not None:
+                    parent_cad_number = real_estate_object.parent_cad_number
+                    entry_parcels = real_estate_object.entry_parcels
+                    area = real_estate_object.area
                     #  с помощью регулярных выражений удаляем из строк символы табуляции, новой строки
                     #  и возврата каретки
                     pattern = "^\s+|\n|\r|\s+$"
-                    address = re.sub(pattern, '', parcel.address)
-                    status = re.sub(pattern, '', parcel.status)
-                    category = parcel.category
-                    permitted_use_by_doc = re.sub(pattern, '', parcel.permitted_use_by_doc)
-                    owner = re.sub(pattern, '', parcel.owner)
-                    own_name_reg_numb_date = parcel.own_name_reg_numb_date
-                    encumbrances = re.sub(pattern, '', parcel.encumbrances)
-                    encumbrances_name_reg_numb_date_duration = parcel.encumbrances_name_reg_numb_date_duration
-                    special_notes = re.sub(pattern, '', parcel.special_notes)
-                    date_of_cadastral_reg = parcel.date_of_cadastral_reg
-                    extract_date = parcel.extract_date
-                    estate_objects = parcel.estate_objects
-                    cadastral_cost = parcel.cadastral_cost
+                    address = re.sub(pattern, '', real_estate_object.address)
+                    status = re.sub(pattern, '', real_estate_object.status)
+                    category = real_estate_object.category
+                    permitted_use_by_doc = re.sub(pattern, '', real_estate_object.permitted_use_by_doc)
+                    owner = re.sub(pattern, '', real_estate_object.owner)
+                    own_name_reg_numb_date = real_estate_object.own_name_reg_numb_date
+                    encumbrances = re.sub(pattern, '', real_estate_object.encumbrances)
+                    encumbrances_name_reg_numb_date_duration = real_estate_object.encumbrances_name_reg_numb_date_duration
+                    special_notes = re.sub(pattern, '', real_estate_object.special_notes)
+                    date_of_cadastral_reg = real_estate_object.date_of_cadastral_reg
+                    extract_date = real_estate_object.extract_date
+                    estate_objects = real_estate_object.estate_objects
+                    cadastral_cost = real_estate_object.cadastral_cost
+                    real_estate_object_type = real_estate_object.type
                     if self.checkBoxReplace.isChecked():
                         address = to_shorten_a_long_name(address)
                         permitted_use_by_doc = to_shorten_a_long_name(permitted_use_by_doc)
@@ -368,7 +381,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                         encumbrances = to_shorten_a_long_name(encumbrances)
                         special_notes = to_shorten_a_long_name(special_notes)
                     if self.checkBoxShape.isChecked():
-                        geometry = parcel.geometry
+                        geometry = real_estate_object.geometry
                         if geometry != {}:
                             for key, value in geometry.items():
                                 shp_wr.poly(value)
@@ -400,9 +413,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                               encumbrances, encumbrances_name_reg_numb_date_duration, special_notes,
                                               datetime.date(int(year1), int(month1), int(day1)),
                                               datetime.date(int(year2), int(month2), int(day2)), estate_objects,
-                                              cadastral_cost)
+                                              cadastral_cost, real_estate_object_type)
                         else:
-                            self.textBrowser.append(f'Выписка {xml_file} не содержит координат границ ЗУ')
+                            self.textBrowser.append(f'Выписка {xml_file} не содержит координат границ')
                     if self.checkBoxExcel.isChecked():
                         if not entry_parcels:
                             row_numb += 1
@@ -422,6 +435,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                             ws['N' + str(row_numb)] = extract_date
                             ws['O' + str(row_numb)] = estate_objects
                             ws['P' + str(row_numb)] = cadastral_cost
+                            ws['Q' + str(row_numb)] = real_estate_object_type
                         else:
                             for parcel_cad_number in entry_parcels:
                                 row_numb += 1
@@ -441,6 +455,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                 ws['N' + str(row_numb)] = extract_date
                                 ws['O' + str(row_numb)] = estate_objects
                                 ws['P' + str(row_numb)] = cadastral_cost
+                                ws['Q' + str(row_numb)] = real_estate_object_type
                     if self.checkBoxShape.isChecked():
                         pass
                     count_successful_files += 1
@@ -449,12 +464,12 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 pb += 1
                 self.progressBar.setValue((pb / len(xmlfiles)) * 100)
             if self.checkBoxExcel.isChecked():
-                for cell_obj in ws['A1':'P' + str(row_numb)]:
+                for cell_obj in ws['A1':'Q' + str(row_numb)]:
                     for cell in cell_obj:
                         cell.border = border_1
                         cell.alignment = Alignment(wrapText=True)  # задаёт выравнивание "перенос по словам"
                 wb.save(directory_out + "\\" + now.strftime("%d_%m_%Y  %H-%M") +
-                        " земельные участки из ЕГРН.xlsx")
+                        " real_estate_objects_EGRN.xlsx")
             if self.checkBoxShape.isChecked():
                 shp_wr.close()
             self.textBrowser.append("Получение данных из выписок XML завершено!" + chr(13) +

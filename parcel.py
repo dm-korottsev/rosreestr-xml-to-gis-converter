@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ElT
 from logic import get_dict_from_csv, gauss_area
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2020"
+__copyright__ = "Copyright 2021"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.4"
+__version__ = "1.5"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -17,6 +17,7 @@ __status__ = "Development"
 class AbstractParcel(ABC):
     def __init__(self, xml_file_path, settings, root, dop):
         self.xml_file_path = xml_file_path
+        self.type = "Земельный участок"
         self._root = root
         self._dop = dop
         self._parcel = None

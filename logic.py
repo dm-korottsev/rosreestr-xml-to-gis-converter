@@ -4,10 +4,10 @@ import csv
 from zipfile import is_zipfile, ZipFile
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2020"
+__copyright__ = "Copyright 2021"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.4"
+__version__ = "1.5"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
