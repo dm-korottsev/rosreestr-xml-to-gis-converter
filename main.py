@@ -12,8 +12,7 @@ import shapefile
 import functools
 from traceback import format_exc
 from logic import write_settings, get_settings, to_shorten_a_long_name, extract_all_zipfiles
-from parcel import AbstractParcel
-from object_of_capital_construction import AbstractOCC
+from real_estate import AbstractRealEstateObject
 import graphic_interface
 
 # делаем текущей директорией для работы ту папку, в которой лежит файл скрипта
@@ -190,10 +189,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         for file_name in xmlfiles:
             xml_file_path = directory + "\\" + file_name
             real_estate_object = None
-            if AbstractParcel.create_a_parcel_object(xml_file_path):
-                real_estate_object = AbstractParcel.create_a_parcel_object(xml_file_path)
-            elif AbstractOCC.create_an_occ_object(xml_file_path):
-                real_estate_object = AbstractOCC.create_an_occ_object(xml_file_path)
+            if AbstractRealEstateObject.create_a_real_estate_object(xml_file_path):
+                real_estate_object = AbstractRealEstateObject.create_a_real_estate_object(xml_file_path)
             if real_estate_object is not None:
                 parcel_kn = real_estate_object.parent_cad_number
                 extract_date = real_estate_object.extract_date
@@ -349,10 +346,8 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             for xml_file in xmlfiles:
                 xml_file_path = directory + "\\" + xml_file
                 real_estate_object = None
-                if AbstractParcel.create_a_parcel_object(xml_file_path):
-                    real_estate_object = AbstractParcel.create_a_parcel_object(xml_file_path)
-                elif AbstractOCC.create_an_occ_object(xml_file_path):
-                    real_estate_object = AbstractOCC.create_an_occ_object(xml_file_path)
+                if AbstractRealEstateObject.create_a_real_estate_object(xml_file_path):
+                    real_estate_object = AbstractRealEstateObject.create_a_real_estate_object(xml_file_path)
                 if real_estate_object is not None:
                     parent_cad_number = real_estate_object.parent_cad_number
                     entry_parcels = real_estate_object.entry_parcels

@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import re
 import json
 import xml.etree.ElementTree as ElT
@@ -14,13 +14,13 @@ __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
-class AbstractParcel(ABC):
+class AbstractRealEstateObject(ABC):
     def __init__(self, xml_file_path, settings, root, dop):
         self.xml_file_path = xml_file_path
-        self.type = "Земельный участок"
+        self.type = None
         self._root = root
         self._dop = dop
-        self._parcel = None
+        self._realty = None
         self._extract_object_right = None
         self._namespaces = dict()
         self._adr = ''
@@ -34,7 +34,7 @@ class AbstractParcel(ABC):
         self.encumbrance_classifier = get_dict_from_csv('encumbrance.csv')  # коды видов ограничений (обременений)
 
     @staticmethod
-    def create_a_parcel_object(xml_file_path: str):
+    def create_a_real_estate_object(xml_file_path: str):
         """
         Определяет xml-схему выписки на земельный участок и возвращает экземпляр соответствующего ей класса.
         В случае, если xml-схема выписки из Росреестра неизвестна, возвращает None.
@@ -43,6 +43,8 @@ class AbstractParcel(ABC):
         root = tree.getroot()
         d1 = '{urn://x-artefacts-rosreestr-ru/outgoing/kvzu/7.0.1}'
         d2 = '{urn://x-artefacts-rosreestr-ru/outgoing/kpzu/6.0.1}'
+        d3 = '{urn://x-artefacts-rosreestr-ru/outgoing/kvoks/3.0.1}'
+        d4 = '{urn://x-artefacts-rosreestr-ru/outgoing/kpoks/4.0.1}'
         with open('settings.json', 'r') as f:
             sd = json.load(f)
         if root.find(d1 + 'Parcels/' + d1 + 'Parcel') is not None:
@@ -51,132 +53,115 @@ class AbstractParcel(ABC):
             return ParcelKPZU(xml_file_path, sd, root, d2)
         elif root.find('land_record') is not None:
             return ParcelEGRN(xml_file_path, sd, root, None)
+        elif root.find(d3 + 'Realty') is not None:
+            return ObjectOfCapitalConstructionKVOKS(xml_file_path, sd, root, d3)
+        elif root.find(d4 + 'Realty') is not None:
+            return ObjectOfCapitalConstructionKPOKS(xml_file_path, sd, root, d4)
+        else:
+            return None
+
+    @property
+    def _real_estate_object(self):
+        if self._realty is not None:
+            building = self._realty.find(self._dop + 'Building')
+            flat = self._realty.find(self._dop + 'Flat')
+        else:
+            building = None
+            flat = None
+        parcel_kvzu = self._root.find(self._dop + 'Parcels/' + self._dop + 'Parcel')
+        parcel_kpzu = self._root.find(self._dop + 'Parcel')
+        if building is not None:
+            return building
+        elif flat is not None:
+            return flat
+        elif parcel_kvzu is not None:
+            return parcel_kvzu
+        elif parcel_kpzu is not None:
+            return parcel_kpzu
         else:
             return None
 
     @property
     def parent_cad_number(self):
         """
-        возвращает для обычного земельного участка - его кадастровый номер,
-        для единого землепользования - кадастровый номер единого землепользования
+        возвращает кадастровый номер объекта недвижимости
+        (для обычного земельного участка - его кадастровый номер,
+        для единого землепользования - кадастровый номер единого землепользования)
         :return: str
         """
-        cad_number = self._parcel.get('CadastralNumber')
+        if self._real_estate_object is not None:
+            cad_number = self._real_estate_object.get('CadastralNumber')
+        else:
+            cad_number = ''
         return cad_number
 
-    @property
+    @abstractmethod
     def entry_parcels(self):
         """
         возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
         :return: list
         """
-        cadastral_numbers = []
-        composition_ez = self._parcel.find(self._dop + 'CompositionEZ')
-        if composition_ez is not None:
-            for entry_parcel in composition_ez.findall(self._dop + 'EntryParcel'):
-                cadastral_numbers.append(entry_parcel.get('CadastralNumber'))
-        return cadastral_numbers
+        pass
 
-    @property
+    @abstractmethod
     def area(self):
         """
-        возвращает площадь земельного участка в квадратных метрах
+        возвращает площадь объекта недвижимости
         :return: str
         """
-        t1_area = self._parcel.find(self._dop + 'Area')
-        t2_area = t1_area.find(self._dop + 'Area')
-        parcel_area = t2_area.text
-        return parcel_area
+        pass
 
     @property
     def status(self):
         """
-        возвращает статус земельного участка (например: учтённый, временный и т.д.)
+        возвращает статус объекта недвижимости (например: учтённый, временный и т.д.)
         :return: str
         """
-        st = self.status_classifier[self._parcel.get('State')]
+        if self._real_estate_object is not None:
+            st = self.status_classifier[self._real_estate_object.get('State')]
+        else:
+            st = ''
         return st
 
-    @property
+    @abstractmethod
     def address(self):
         """
-        возвращает адрес земельного участка в человекочитаемом виде
+        возвращает адрес объекта недвижимости в человекочитаемом виде
         :return: str
         """
-        t_address = None
-        address_note = None
-        location = self._parcel.find(self._dop + 'Location')
-        if location is not None:
-            t_address = location.find(self._dop + 'Address')
-        if t_address is not None:
-            address_note = t_address.find(self._adr + ':Note', self._namespaces)
-        if address_note is not None:
-            address = address_note.text        
-            if address == ',':
-                address = ''
-        else:
-            if t_address is not None:
-                region = t_address.find(self._adr + ':Region', self._namespaces)
-                district = t_address.find(self._adr + ':District', self._namespaces)
-                locality = t_address.find(self._adr + ':Locality', self._namespaces)
-                if region is not None and district is not None and locality is not None:
-                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
-                              district.get('Type') + ', ' + locality.get('Type') + ' ' + locality.get('Name')
-                elif region is not None and district is not None:
-                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
-                              district.get('Type')
-                elif region is not None:
-                    address = self.codes_of_rf_regions[region.text]
-                else:
-                    address = ''
-            else:
-                address = ''
-        return address
+        pass
 
-    @property
+    @abstractmethod
     def district_name(self):
-        district_name = ''
-        location = self._parcel.find(self._dop + 'Location')
-        if location is not None:
-            t_address = location.find(self._dop + 'Address')
-            district = t_address.find(self._adr + ':District', self._namespaces)
-            if district is not None:
-                district_name = district.get('Name')
-        return district_name
+        """
+        возвращает название района, в котором находится объект недвижимости
+        :return: str
+        """
+        pass
 
-    @property
+    @abstractmethod
     def category(self):
         """
-        возвращает категорию земель
+        возвращает категорию земель (для земельных участков)
         :return: str
         """
-        t_category = self._parcel.find(self._dop + 'Category')
-        if t_category is not None:
-            category = self.land_category_classifier[t_category.text]
-        else:
-            category = self.land_category_classifier['003008000000']
-        return category
+        pass
 
-    @property
+    @abstractmethod
     def permitted_use_by_doc(self):
         """
-        возвращает вид разрешённого использования (по документу)
+        возвращает вид разрешённого использования по документу (для земельных участков)
         :return: str
         """
-        utilization = self._parcel.find(self._dop + 'Utilization')
-        if utilization.get('ByDoc') is not None:
-            utiliz_by_doc = utilization.get('ByDoc')
-        else:
-            utiliz_by_doc = '-'
-        return utiliz_by_doc
+        pass
 
     @property
     def cadastral_cost(self):
         """
-        возвращает кадастровую стоимость земельного участка (в рублях)
+        возвращает кадастровую стоимость объекта недвижимости (в рублях)
         :return: str
         """
-        cad_cost = self._parcel.find(self._dop + 'CadastralCost')
+        cad_cost = self._real_estate_object.find(self._dop + 'CadastralCost')
         if cad_cost is not None:
             cad_cost_value = cad_cost.get('Value')
         else:
@@ -287,7 +272,10 @@ class AbstractParcel(ABC):
             cell_owner_doli_ga.append(str(item + ' ' + list_owner[i_of_it]))
         #  если в обычных полях правообладатель не указан, то ищем в устаревших полях (из БД ГКН)
         if not cell_owner:
-            rights_gkn = self._parcel.find(self._dop + 'Rights')
+            if self._realty is not None:
+                rights_gkn = self._realty.find(self._dop + 'Rights')
+            else:
+                rights_gkn = self._real_estate_object.find(self._dop + 'Rights')
             if rights_gkn is not None:
                 for right_gkn in rights_gkn.findall(self._dop + 'Right'):
                     type_sob_gkn = right_gkn.find(self._dop + 'Type')
@@ -444,7 +432,10 @@ class AbstractParcel(ABC):
                         if name is not None:
                             name_numb_date.append(name.text)
         if not name_numb_date:
-            rights_gkn = self._parcel.find(self._dop + 'Rights')
+            if self._realty is not None:
+                rights_gkn = self._realty.find(self._dop + 'Rights')
+            else:
+                rights_gkn = self._real_estate_object.find(self._dop + 'Rights')
             if rights_gkn is not None:
                 for right_gkn in rights_gkn.findall(self._dop + 'Right'):
                     type_sob_gkn = right_gkn.find(self._dop + 'Type')
@@ -541,7 +532,10 @@ class AbstractParcel(ABC):
                         if dop_obrem.text != 'данные отсутствуют':
                             obrem += ', ' + dop_obrem.text
         if not list_arendatorov:
-            encumbrances_gkn = self._parcel.find(self._dop + 'Encumbrances')
+            if self._realty is not None:
+                encumbrances_gkn = self._realty.find(self._dop + 'Encumbrances')
+            else:
+                encumbrances_gkn = self._real_estate_object.find(self._dop + 'Encumbrances')
             if encumbrances_gkn is not None:
                 for encumbrance_gkn in encumbrances_gkn.findall(self._dop + 'Encumbrance'):
                     type_obr_gkn = encumbrance_gkn.find(self._dop + 'Type')
@@ -624,7 +618,10 @@ class AbstractParcel(ABC):
                                 if (", ".join(doc) + ", срок действия: " + rent_term) not in rental_periods:
                                     rental_periods.append(", ".join(doc) + ", срок действия: " + rent_term)
         if not rental_periods:
-            encumbrances_gkn = self._parcel.find(self._dop + 'Encumbrances')
+            if self._realty is not None:
+                encumbrances_gkn = self._realty.find(self._dop + 'Encumbrances')
+            else:
+                encumbrances_gkn = self._real_estate_object.find(self._dop + 'Encumbrances')
             if encumbrances_gkn is not None:
                 for encumbrance_gkn in encumbrances_gkn.findall(self._dop + 'Encumbrance'):
                     type_obr_gkn = encumbrance_gkn.find(self._dop + 'Type')
@@ -659,42 +656,36 @@ class AbstractParcel(ABC):
     @property
     def date_of_cadastral_reg(self):
         """
-        возвращает дату постановки земельного участка на кадастровый учет (дату присвоения кадастрового номера)
+        возвращает дату постановки объекта недвижимости на кадастровый учет (дату присвоения кадастрового номера)
         :return: str
         """
-        if self._parcel.get('DateCreated', None):
-            date_created = self._parcel.get('DateCreated')
-        elif self._parcel.get('DateCreatedDoc', None):
-            date_created = self._parcel.get('DateCreatedDoc')
-        inverted_date = re.sub('-', '.', date_created)
-        date = ".".join(inverted_date.split(".")[::-1])
+        date = ''
+        if self._real_estate_object is not None:
+            if self._real_estate_object.get('DateCreated', None):
+                date_created = self._real_estate_object.get('DateCreated')
+            elif self._real_estate_object.get('DateCreatedDoc', None):
+                date_created = self._real_estate_object.get('DateCreatedDoc')
+            inverted_date = re.sub('-', '.', date_created)
+            date = ".".join(inverted_date.split(".")[::-1])
         return date
 
-    @property
+    @abstractmethod
     def special_notes(self):
         """
-        возвращает особые отметки о земельном участке в ЕГРН
+        возвращает особые отметки об объекте недвижимости в ЕГРН
         :return: str
         """
-        spec_notes = self._parcel.find(self._dop + 'SpecialNote')
-        if spec_notes is not None:
-            return spec_notes.text
-        else:
-            return ''
+        pass
 
-    @property
+    @abstractmethod
     def estate_objects(self):
         """
-        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
-        незавершенного строительства
+        возвращает список кадастровых номеров других объектов недвижимости, расположенных в пределах исходного объекта
+        недвижимости (например, здания, сооружения, объекты незавершённого строительства, расположенные  на земельном
+        участке или квартиры, помещения в зданиии)
         :return: str
         """
-        estate_objects_cad_nums = []
-        inner_cadastral_numbers = self._parcel.find(self._dop + 'InnerCadastralNumbers')
-        if inner_cadastral_numbers is not None:
-            for cadastral_number in inner_cadastral_numbers.findall(self._dop + 'CadastralNumber'):
-                estate_objects_cad_nums.append(cadastral_number.text)
-        return ', '.join(estate_objects_cad_nums)
+        pass
 
     def _get_geometry_from_spatial_element(self, spatial_elements, dop_cad_num: str, result: dict):
         points_x = []
@@ -704,8 +695,7 @@ class AbstractParcel(ABC):
         for entity_spatial in spatial_elements.findall(self._dop + 'EntitySpatial'):
             coordinates = []
             multipolygon = {}
-            for spatial_element in entity_spatial.findall(self._spat + ':SpatialElement',
-                                                          self._namespaces):
+            for spatial_element in entity_spatial.findall(self._spat + ':SpatialElement', self._namespaces):
                 for spelement_unit in spatial_element.findall(self._spat + ':SpelementUnit', self._namespaces):
                     ordinate = spelement_unit.find(self._spat + ':Ordinate', self._namespaces)
                     coord_x = float(ordinate.get('X'))
@@ -746,6 +736,149 @@ class AbstractParcel(ABC):
             if coordinates:
                 result.update({dop_cad_num: coordinates})
 
+    @abstractmethod
+    def geometry(self):
+        """
+        возвращает пространственные данные объекта недвижимости (тип геометрии - полигон) в виде словаря,
+        в котором ключ - кадастровый номер, значение по ключу - список координат границ полигона в формате,
+        используемом в библиотеке pyshp
+        :return: dict
+        """
+        pass
+
+
+class AbstractParcel(AbstractRealEstateObject):
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
+        self.type = "Земельный участок"
+
+    @property
+    def entry_parcels(self):
+        """
+        возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
+        :return: list
+        """
+        cadastral_numbers = []
+        composition_ez = self._real_estate_object.find(self._dop + 'CompositionEZ')
+        if composition_ez is not None:
+            for entry_parcel in composition_ez.findall(self._dop + 'EntryParcel'):
+                cadastral_numbers.append(entry_parcel.get('CadastralNumber'))
+        return cadastral_numbers
+
+    @property
+    def area(self):
+        """
+        возвращает площадь земельного участка в квадратных метрах
+        :return: str
+        """
+        t1_area = self._real_estate_object.find(self._dop + 'Area')
+        t2_area = t1_area.find(self._dop + 'Area')
+        parcel_area = t2_area.text
+        return parcel_area
+
+    @property
+    def address(self):
+        """
+        возвращает адрес земельного участка в человекочитаемом виде
+        :return: str
+        """
+        t_address = None
+        address_note = None
+        location = self._real_estate_object.find(self._dop + 'Location')
+        if location is not None:
+            t_address = location.find(self._dop + 'Address')
+        if t_address is not None:
+            address_note = t_address.find(self._adr + ':Note', self._namespaces)
+        if address_note is not None:
+            address = address_note.text
+            if address == ',':
+                address = ''
+        else:
+            if t_address is not None:
+                region = t_address.find(self._adr + ':Region', self._namespaces)
+                district = t_address.find(self._adr + ':District', self._namespaces)
+                locality = t_address.find(self._adr + ':Locality', self._namespaces)
+                if region is not None and district is not None and locality is not None:
+                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
+                              district.get('Type') + ', ' + locality.get('Type') + ' ' + locality.get('Name')
+                elif region is not None and district is not None:
+                    address = self.codes_of_rf_regions[region.text] + ', ' + district.get('Name') + ' ' +\
+                              district.get('Type')
+                elif region is not None:
+                    address = self.codes_of_rf_regions[region.text]
+                else:
+                    address = ''
+            else:
+                address = ''
+        return address
+
+    @property
+    def district_name(self):
+        """
+        возвращает название района, в котором находится объект недвижимости
+        :return: str
+        """
+        district_name = ''
+        location = self._real_estate_object.find(self._dop + 'Location')
+        if location is not None:
+            t_address = location.find(self._dop + 'Address')
+            district = t_address.find(self._adr + ':District', self._namespaces)
+            if district is not None:
+                district_name = district.get('Name')
+        return district_name
+
+    @property
+    def category(self):
+        """
+        возвращает категорию земель
+        :return: str
+        """
+        t_category = self._real_estate_object.find(self._dop + 'Category')
+        if t_category is not None:
+            category = self.land_category_classifier[t_category.text]
+        else:
+            category = self.land_category_classifier['003008000000']
+        return category
+
+    @property
+    def permitted_use_by_doc(self):
+        """
+        возвращает вид разрешённого использования (по документу)
+        :return: str
+        """
+        utilization = self._real_estate_object.find(self._dop + 'Utilization')
+        if utilization.get('ByDoc') is not None:
+            utiliz_by_doc = utilization.get('ByDoc')
+        else:
+            utiliz_by_doc = '-'
+        return utiliz_by_doc
+
+    @property
+    def special_notes(self):
+        """
+        возвращает особые отметки о земельном участке в ЕГРН
+        :return: str
+        """
+        spec_notes = self._real_estate_object.find(self._dop + 'SpecialNote')
+        if spec_notes is not None:
+            return spec_notes.text
+        else:
+            return ''
+
+    @property
+    def estate_objects(self):
+        """
+        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
+        незавершенного строительства
+        :return: str
+        """
+        estate_objects_cad_nums = []
+        inner_cadastral_numbers = self._real_estate_object.find(self._dop + 'InnerCadastralNumbers')
+        if inner_cadastral_numbers is not None:
+            for cadastral_number in inner_cadastral_numbers.findall(self._dop + 'CadastralNumber'):
+                estate_objects_cad_nums.append(cadastral_number.text)
+        return ', '.join(estate_objects_cad_nums)
+
     @property
     def geometry(self):
         """
@@ -755,8 +888,8 @@ class AbstractParcel(ABC):
         :return: dict
         """
         result = {}
-        composition_ez = self._parcel.find(self._dop + 'CompositionEZ')
-        contours = self._parcel.find(self._dop + 'Contours')
+        composition_ez = self._real_estate_object.find(self._dop + 'CompositionEZ')
+        contours = self._real_estate_object.find(self._dop + 'Contours')
         if composition_ez is not None:
             for entry_parcel in composition_ez.findall(self._dop + 'EntryParcel'):
                 dop_cad_num = entry_parcel.get('CadastralNumber')
@@ -766,14 +899,13 @@ class AbstractParcel(ABC):
                 dop_cad_num = self.parent_cad_number + '(' + contour.get('NumberRecord') + ')'
                 self._get_geometry_from_spatial_element(contour, dop_cad_num, result)
         else:
-            self._get_geometry_from_spatial_element(self._parcel, self.parent_cad_number, result)
+            self._get_geometry_from_spatial_element(self._real_estate_object, self.parent_cad_number, result)
         return result
 
 
 class ParcelKVZU(AbstractParcel):
     def __init__(self, xml_file_path, settings, root, dop):
         super().__init__(xml_file_path, settings, root, dop)
-        self._parcel = self._root.find(self._dop + 'Parcels/' + self._dop + 'Parcel')
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'smev': 'urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1',
                             'num': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/numbers/1.0',
@@ -789,7 +921,6 @@ class ParcelKVZU(AbstractParcel):
 class ParcelKPZU(AbstractParcel):
     def __init__(self, xml_file_path, settings, root, dop):
         super().__init__(xml_file_path, settings, root, dop)
-        self._parcel = self._root.find(self._dop + 'Parcel')
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'ns5': "urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1",
                             'ns2': "urn://x-artefacts-rosreestr-ru/commons/complex-types/numbers/1.0",
@@ -1346,3 +1477,203 @@ class ParcelEGRN(AbstractParcel):
                         dop_cad_num = self.parent_cad_number
                     self._get_geometry_from_spatial_element(contour, dop_cad_num, result)
         return result
+
+
+class AbstractOCC(AbstractRealEstateObject):
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
+        self.type = "Объект капитального строительства"
+        self._realty = self._root.find(self._dop + 'Realty')
+        self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
+        self._namespaces = {
+            'smev': 'urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1',
+            'num': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/numbers/1.0',
+            'adrs': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/address-output/4.0.1',
+            'spa': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/entity-spatial/5.0.1',
+            'param': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/parameters-oks/2.0.1',
+            'cer': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/certification-doc/1.0',
+            'doc': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/document-output/4.0.1',
+            'flat': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/assignation-flat/1.0.1',
+            'ch': 'urn://x-artefacts-rosreestr-ru/commons/complex-types/cultural-heritage/2.0.1'
+        }
+        self._adr = 'adrs'
+        self._spat = 'spa'
+
+    @property
+    def _real_estate_object(self):
+        building = self._realty.find(self._dop + 'Building')
+        flat = self._realty.find(self._dop + 'Flat')
+        if building is not None:
+            return building
+        elif flat is not None:
+            return flat
+        else:
+            return None
+
+    @property
+    def entry_parcels(self):
+        """
+        нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
+        полезной информации)
+        :return: list
+        """
+        cadastral_numbers = []
+        return cadastral_numbers
+
+    @property
+    def area(self):
+        """
+        возвращает площадь объекта недвижимости
+        :return: str
+        """
+        real_estate_object = self._real_estate_object
+        if real_estate_object is not None:
+            t_area = real_estate_object.find(self._dop + 'Area')
+            area = t_area.text
+        else:
+            area = ''
+        return area
+
+    @property
+    def address(self):
+        """
+        возвращает адрес объекта недвижимости в человекочитаемом виде
+        :return: str
+        """
+        t_address = None
+        address_note = None
+        real_estate_object = self._real_estate_object
+        if real_estate_object is not None:
+            t_address = real_estate_object.find(self._dop + 'Address')
+        if t_address is not None:
+            address_note = t_address.find(self._adr + ':Note', self._namespaces)
+        if address_note is not None:
+            address = address_note.text
+            if address == ',':
+                address = ''
+        else:
+            address = ''
+            if t_address is not None:
+                region = t_address.find(self._adr + ':Region', self._namespaces)
+                district = t_address.find(self._adr + ':District', self._namespaces)
+                urban_district = t_address.find(self._adr + ':UrbanDistrict', self._namespaces)
+                locality = t_address.find(self._adr + ':Locality', self._namespaces)
+                street = t_address.find(self._adr + ':Street', self._namespaces)
+                level_1 = t_address.find(self._adr + ':Level1', self._namespaces)
+                level_2 = t_address.find(self._adr + ':Level2', self._namespaces)
+                level_3 = t_address.find(self._adr + ':Level3', self._namespaces)
+                apartment = t_address.find(self._adr + ':Apartment', self._namespaces)
+                if region is not None:
+                    address = address + self.codes_of_rf_regions[region.text]
+                if district is not None:
+                    address = address + ', ' + district.get('Name') + ' ' + district.get('Type')
+                if urban_district is not None:
+                    address = address + ', ' + urban_district.get('Name') + ' ' + urban_district.get('Type')
+                if locality is not None:
+                    address = address + ', ' + locality.get('Type') + ' ' + locality.get('Name')
+                if street is not None:
+                    address = address + ', ' + street.get('Name') + ' ' + street.get('Type')
+                if level_1 is not None:
+                    address = address + ', ' + level_1.get('Type') + ' ' + level_1.get('Value')
+                if level_2 is not None:
+                    address = address + ', ' + level_2.get('Type') + ' ' + level_2.get('Value')
+                if level_3 is not None:
+                    address = address + ', ' + level_3.get('Type') + ' ' + level_3.get('Value')
+                if apartment is not None:
+                    address = address + ', ' + apartment.get('Type') + ' ' + apartment.get('Value')
+        return address
+
+    @property
+    def district_name(self):
+        district_name = ''
+        real_estate_object = self._real_estate_object
+        if real_estate_object is not None:
+            location = real_estate_object.find(self._dop + 'Address')
+            if location is not None:
+                district = location.find(self._adr + ':District', self._namespaces)
+                if district is not None:
+                    district_name = district.get('Name')
+        return district_name
+
+    @property
+    def category(self):
+        """
+        нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
+        полезной информации)
+        :return: str
+        """
+        return '-'
+
+    @property
+    def permitted_use_by_doc(self):
+        """
+        нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
+        полезной информации)
+        :return: str
+        """
+        return '-'
+
+    @property
+    def special_notes(self):
+        """
+        возвращает особые отметки об  объекта недвижимости в ЕГРН
+        :return: str
+        """
+        real_estate_object = self._real_estate_object
+        spec_notes = None
+        if real_estate_object is not None:
+            spec_notes = real_estate_object.find(self._dop + 'Notes')
+        if spec_notes is not None:
+            return spec_notes.text
+        else:
+            return ''
+
+    @property
+    def estate_objects(self):
+        """
+        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
+        незавершенного строительства
+        :return: str
+        """
+        estate_objects_cad_nums = []
+        real_estate_object = self._real_estate_object
+        if real_estate_object is not None:
+            flats = real_estate_object.find(self._dop + 'Flats')
+            if flats is not None:
+                for flat in flats.findall(self._dop + 'Flat'):
+                    estate_objects_cad_nums.append(flat.get('CadastralNumber'))
+            return ', '.join(estate_objects_cad_nums)
+        else:
+            return ''
+
+    @property
+    def geometry(self):
+        """
+        возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
+        кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
+        pyshp
+        :return: dict
+        """
+        result = {}
+        composition_ez = self._real_estate_object
+        contours = self._realty.find(self._dop + 'Contours')
+        if composition_ez is not None:
+            dop_cad_num = composition_ez.get("CadastralNumber")
+            self._get_geometry_from_spatial_element(composition_ez, dop_cad_num, result)
+        elif contours is not None:
+            for contour in contours.findall(self._dop + 'Contour'):
+                dop_cad_num = self.parent_cad_number + '(' + contour.get('NumberRecord') + ')'
+                self._get_geometry_from_spatial_element(contour, dop_cad_num, result)
+        else:
+            self._get_geometry_from_spatial_element(self._realty, self.parent_cad_number, result)
+        return result
+
+
+class ObjectOfCapitalConstructionKVOKS(AbstractOCC):
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
+
+
+class ObjectOfCapitalConstructionKPOKS(AbstractOCC):
+    def __init__(self, xml_file_path, settings, root, dop):
+        super().__init__(xml_file_path, settings, root, dop)
