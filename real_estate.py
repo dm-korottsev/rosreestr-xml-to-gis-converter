@@ -1498,15 +1498,19 @@ class AbstractOCC(AbstractRealEstateObject):
         }
         self._adr = 'adrs'
         self._spat = 'spa'
+        self._param = 'param'
 
     @property
     def _real_estate_object(self):
         building = self._realty.find(self._dop + 'Building')
         flat = self._realty.find(self._dop + 'Flat')
+        construction = self._realty.find(self._dop + 'Construction')
         if building is not None:
             return building
         elif flat is not None:
             return flat
+        elif construction is not None:
+            return construction
         else:
             return None
 
@@ -1529,7 +1533,14 @@ class AbstractOCC(AbstractRealEstateObject):
         real_estate_object = self._real_estate_object
         if real_estate_object is not None:
             t_area = real_estate_object.find(self._dop + 'Area')
-            area = t_area.text
+            if t_area is not None:
+                area = t_area.text
+            else:
+                key_parameters = real_estate_object.find(self._dop + 'KeyParameters')
+                if key_parameters is not None:
+                    key_parameter = key_parameters.find(self._param + ':KeyParameter', self._namespaces)
+                    if key_parameter.get("Type") == "05":
+                        area = key_parameter.get("Value")
         else:
             area = ''
         return area
@@ -1556,6 +1567,7 @@ class AbstractOCC(AbstractRealEstateObject):
             if t_address is not None:
                 region = t_address.find(self._adr + ':Region', self._namespaces)
                 district = t_address.find(self._adr + ':District', self._namespaces)
+                city = t_address.find(self._adr + ':City', self._namespaces)
                 urban_district = t_address.find(self._adr + ':UrbanDistrict', self._namespaces)
                 locality = t_address.find(self._adr + ':Locality', self._namespaces)
                 street = t_address.find(self._adr + ':Street', self._namespaces)
@@ -1567,6 +1579,8 @@ class AbstractOCC(AbstractRealEstateObject):
                     address = address + self.codes_of_rf_regions[region.text]
                 if district is not None:
                     address = address + ', ' + district.get('Name') + ' ' + district.get('Type')
+                if city is not None:
+                    address = address + ', ' + city.get('Type') + ' ' + city.get('Name')
                 if urban_district is not None:
                     address = address + ', ' + urban_district.get('Name') + ' ' + urban_district.get('Type')
                 if locality is not None:
@@ -1645,6 +1659,22 @@ class AbstractOCC(AbstractRealEstateObject):
             return ', '.join(estate_objects_cad_nums)
         else:
             return ''
+
+    def _get_geometry_from_spatial_element(self, spatial_elements, dop_cad_num: str, result: dict):
+        pos_next = 0
+        for entity_spatial in spatial_elements.findall(self._dop + 'EntitySpatial'):
+            coordinates = []
+            for spatial_element in entity_spatial.findall(self._spat + ':SpatialElement', self._namespaces):
+                circle = []
+                for spelement_unit in spatial_element.findall(self._spat + ':SpelementUnit', self._namespaces):
+                    ordinate = spelement_unit.find(self._spat + ':Ordinate', self._namespaces)
+                    coord_x = float(ordinate.get('X'))
+                    coord_y = float(ordinate.get('Y'))
+                    circle.append([coord_y, coord_x])
+                    pos_next = pos_next + 1
+                coordinates.append(circle)
+            if coordinates:
+                result.update({dop_cad_num: coordinates})
 
     @property
     def geometry(self):
