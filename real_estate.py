@@ -65,15 +65,19 @@ class AbstractRealEstateObject(ABC):
         if self._realty is not None:
             building = self._realty.find(self._dop + 'Building')
             flat = self._realty.find(self._dop + 'Flat')
+            construction = self._realty.find(self._dop + 'Construction')
         else:
             building = None
             flat = None
+            construction = None
         parcel_kvzu = self._root.find(self._dop + 'Parcels/' + self._dop + 'Parcel')
         parcel_kpzu = self._root.find(self._dop + 'Parcel')
         if building is not None:
             return building
         elif flat is not None:
             return flat
+        elif construction is not None:
+            return construction
         elif parcel_kvzu is not None:
             return parcel_kvzu
         elif parcel_kpzu is not None:
@@ -161,9 +165,12 @@ class AbstractRealEstateObject(ABC):
         возвращает кадастровую стоимость объекта недвижимости (в рублях)
         :return: str
         """
-        cad_cost = self._real_estate_object.find(self._dop + 'CadastralCost')
-        if cad_cost is not None:
-            cad_cost_value = cad_cost.get('Value')
+        if self._real_estate_object is not None:
+            cad_cost = self._real_estate_object.find(self._dop + 'CadastralCost')
+            if cad_cost is not None:
+                cad_cost_value = cad_cost.get('Value')
+            else:
+                cad_cost_value = ''
         else:
             cad_cost_value = ''
         return cad_cost_value
