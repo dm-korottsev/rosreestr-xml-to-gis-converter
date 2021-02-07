@@ -1,4 +1,4 @@
-# rosreestr-land-parcel-xml-converter
+# rosreestr-xml-to-gis-converter
 Позволяет конвертировать набор выписок в электронном виде (XML, распакованные или в исходном ZIP-архиве) из ЕГРН (Росреестра) 
 на земельные участки, здания, сооружения, помещения в формат ESRI Shapefile (.shp) и таблицу (.xlsx, Microsoft Office Excel начиная с версии 2007)
 
