@@ -1538,6 +1538,7 @@ class AbstractOCC(AbstractRealEstateObject):
         :return: str
         """
         real_estate_object = self._real_estate_object
+        area = '0.0'
         if real_estate_object is not None:
             t_area = real_estate_object.find(self._dop + 'Area')
             if t_area is not None:
@@ -1548,8 +1549,6 @@ class AbstractOCC(AbstractRealEstateObject):
                     key_parameter = key_parameters.find(self._param + ':KeyParameter', self._namespaces)
                     if key_parameter.get("Type") == "05":
                         area = key_parameter.get("Value")
-        else:
-            area = ''
         return area
 
     @property
