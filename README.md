@@ -17,3 +17,5 @@
 Требования: *python 3.6 и более поздние версии*  
 Установка зависимостей: *pip install -r requirements.txt*  
 Для начала работы запустите файл main.py
+
+![alt text](screenshots/gui.png "Пользовательский интерфейс")
