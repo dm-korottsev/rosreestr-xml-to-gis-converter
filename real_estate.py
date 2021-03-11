@@ -400,6 +400,8 @@ class AbstractRealEstateObject(ABC):
             else:
                 if len(set_dolevikov) > 0:
                     return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
+            if len(list_type_sobstv) > 0 and len(list_owner) == 0:
+                return type_sobstv
         elif list_sovm_sobsv:
             if list_sovm_sobsv != list_owner:
                 return 'Совместная собственность ' + ', '.join(list_sovm_sobsv) + ', ' + ', '.join(cell_owner)
@@ -668,10 +670,12 @@ class AbstractRealEstateObject(ABC):
         """
         date = ''
         if self._real_estate_object is not None:
-            if self._real_estate_object.get('DateCreated', None):
-                date_created = self._real_estate_object.get('DateCreated')
-            elif self._real_estate_object.get('DateCreatedDoc', None):
+            # DateCreatedDoc - Дата постановки на учет по документу (для ранее учтенных участков)
+            # для ранее учтённых может быть также заполнено DateCreated, но надо брать именно DateCreatedDoc
+            if self._real_estate_object.get('DateCreatedDoc', None):
                 date_created = self._real_estate_object.get('DateCreatedDoc')
+            elif self._real_estate_object.get('DateCreated', None):
+                date_created = self._real_estate_object.get('DateCreated')
             inverted_date = re.sub('-', '.', date_created)
             date = ".".join(inverted_date.split(".")[::-1])
         return date
@@ -850,12 +854,15 @@ class AbstractParcel(AbstractRealEstateObject):
     @property
     def permitted_use_by_doc(self):
         """
-        возвращает вид разрешённого использования (по документу)
+        возвращает вид разрешённого использования (приоритет - по документу, если не заполнено - по классификатору)
         :return: str
         """
         utilization = self._real_estate_object.find(self._dop + 'Utilization')
         if utilization.get('ByDoc') is not None:
             utiliz_by_doc = utilization.get('ByDoc')
+        elif utilization.get('Utilization') is not None:
+            utiliz_by_doc_code = utilization.get('Utilization')
+            utiliz_by_doc = self.permitted_use_classifier.get(utiliz_by_doc_code, '-')
         else:
             utiliz_by_doc = '-'
         return utiliz_by_doc
