@@ -270,6 +270,8 @@ class AbstractRealEstateObject(ABC):
                                 if proverka is not None:
                                     if proverka.text != '001003000000':
                                         list_owner.append(nname)
+                    elif childs.tag == self._dop + 'NoOwner':
+                        list_owner.append(childs.text)
         if len(list_type_sobstv) == len(list_owner):
             for item in list_type_sobstv:
                 i_of_it = list_type_sobstv.index(item)
@@ -383,11 +385,18 @@ class AbstractRealEstateObject(ABC):
             elif list_doli_ga:
                 if len(list_doli_ga) == len(list_owner):
                     return 'Долевая собственность ' + ', '.join(cell_owner_doli_ga)
+                elif list_doli_ga and list_dolei:
+                    if len(list_dolevikov) > 2:
+                        return type_sobstv + ' (' + str(max(list_dolei)) + ' долей; ' + str(
+                            len(set_dolevikov)) + ' правообладателей)'
                 else:
                     print('Необработанное исключение в файле ' + self.xml_file_path)
             elif list_dolei:
                 try:
-                    if len(list_dolevikov) > 2:
+                    if len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' in set_dolevikov:
+                        return type_sobstv + ' (' + str(max(list_dolei)) + \
+                               ' долей; данные о правообладателях отсутствуют)'
+                    elif len(list_dolevikov) > 2:
                         return type_sobstv + ' (' + str(max(list_dolei)) + ' долей; ' + str(
                             len(set_dolevikov)) + ' правообладателей)'
                     elif len(list_dolevikov) == 1:
