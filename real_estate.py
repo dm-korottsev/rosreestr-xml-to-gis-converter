@@ -1060,7 +1060,14 @@ class ParcelEGRN(AbstractParcel):
         if permitted_use is not None:
             permitted_use_established = permitted_use.find('permitted_use_established')
             by_document = permitted_use_established.find('by_document')
-            return by_document.text
+            land_use = permitted_use_established.find('land_use')
+            if by_document is not None:
+                return by_document.text
+            elif land_use is not None:
+                value = land_use.find('value')
+                return value.text
+            else:
+                return ''
         else:
             return ''
 
@@ -1101,12 +1108,19 @@ class ParcelEGRN(AbstractParcel):
                     r_type_list.append(value.text)
                 if r_type == 'Общая долевая собственность':
                     shares = right_data.find('shares')
-                    share = shares.find('share')
-                    numerator = share.find('numerator')
-                    denominator = share.find('denominator')
+                    if shares is not None:
+                        share = shares.find('share')
+                        numerator_el = share.find('numerator')
+                        denominator_el = share.find('denominator')
+                        numerator = numerator_el.text
+                        denominator = denominator_el.text
+                    else:
+                        share_description = right_data.find('share_description')
+                        numerator = share_description.text.split("/")[0]
+                        denominator = share_description.text.split("/")[1]
                     if numerator is not None and denominator is not None:
-                        share_list.append(numerator.text + '/' + denominator.text)
-                        denominators.add(int(denominator.text))
+                        share_list.append(numerator + '/' + denominator)
+                        denominators.add(int(denominator))
                 right_holders = record.find('right_holders')
                 for right_holder in right_holders.findall('right_holder'):
                     if r_type == 'Общая долевая собственность':
