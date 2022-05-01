@@ -20,10 +20,10 @@ path_to_current_file = os.path.realpath(__file__)
 os.chdir(os.path.split(path_to_current_file)[0])
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2021"
+__copyright__ = "Copyright 2022"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.5"
+__version__ = "1.6"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -165,10 +165,10 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         result_files = os.listdir(directory)
         sig_files = list(filter(lambda x: x.endswith('.sig'), result_files))
         for sf in sig_files:
-            os.remove(directory + '//' + sf)
+            os.remove(os.path.join(directory, sf))
         for zf in new_zipfiles:
             if zf not in zipfiles:
-                os.remove(directory + '//' + zf)
+                os.remove(os.path.join(directory, zf))
         self.textBrowser.append("Извлечение выписок xml из архивов завершено.")
         self.textBrowser.append("------------------------------------------------------------------------------------"
                                 "---------------------------")
@@ -187,7 +187,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         count_unsupported_files = 0
         xmlfiles = list(filter(lambda x: x.endswith('.xml'), result_files))
         for file_name in xmlfiles:
-            xml_file_path = directory + "\\" + file_name
+            xml_file_path = os.path.join(directory, file_name)
             real_estate_object = None
             if AbstractRealEstateObject.create_a_real_estate_object(xml_file_path):
                 real_estate_object = AbstractRealEstateObject.create_a_real_estate_object(xml_file_path)
@@ -197,21 +197,21 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 pkn = re.sub(':', '-', parcel_kn)
                 ed = re.sub('\.', '-', extract_date)
                 new_name = pkn + '---' + ed + '.xml'
-                new_path = directory + '//' + new_name
+                new_path = os.path.join(directory, new_name)
                 if file_name != new_name:
                     if not os.path.exists(new_path):
-                        os.rename(directory + '//' + file_name, new_path)
+                        os.rename(os.path.join(directory, file_name), new_path)
                     else:
                         for num in range(2, 100):
-                            new_path_double = directory + '//' + pkn + '---' + ed + ' (' + str(num) + ')' + '.xml'
+                            new_path_double = os.path.join(directory, pkn + '---' + ed + ' (' + str(num) + ')' + '.xml')
                             if not os.path.exists(new_path_double):
-                                os.rename(directory + '//' + file_name, new_path_double)
+                                os.rename(os.path.join(directory, file_name), new_path_double)
                                 break
                     count_successful_files += 1
             else:
                 count_unsupported_files += 1
             pb += 1
-            self.progressBar.setValue((pb / len(xmlfiles)) * 100)
+            self.progressBar.setValue(int((pb / len(xmlfiles)) * 100))
         files_do_not_require_renaming = len(xmlfiles) - count_successful_files - count_unsupported_files
         self.textBrowser.append("Готово!")
         if files_do_not_require_renaming > 0:
@@ -319,7 +319,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 ws.column_dimensions['Q'].width = 20
                 row_numb = 1
             if self.checkBoxShape.isChecked():
-                shp_wr = shapefile.Writer(directory_out + "\\" + 'real_estate_objects_EGRN_' + now.strftime("%d_%m_%Y  %H-%M"),
+                shp_wr = shapefile.Writer(os.path.join(directory_out, 'real_estate_objects_EGRN_' + now.strftime("%d_%m_%Y  %H-%M")),
                                           shapeType=shapefile.POLYGON, encoding="cp1251")
                 shp_wr.field('CadNumber', 'C', size=20)
                 shp_wr.field('SnglUseCN', 'C', size=20)
@@ -344,7 +344,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             count_successful_files = 0
             self.progressBar.setValue(0)
             for xml_file in xmlfiles:
-                xml_file_path = directory + "\\" + xml_file
+                xml_file_path = os.path.join(directory, xml_file)
                 real_estate_object = None
                 if AbstractRealEstateObject.create_a_real_estate_object(xml_file_path):
                     real_estate_object = AbstractRealEstateObject.create_a_real_estate_object(xml_file_path)
@@ -457,14 +457,14 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                 else:
                     xml_errors.append(xml_file_path)
                 pb += 1
-                self.progressBar.setValue((pb / len(xmlfiles)) * 100)
+                self.progressBar.setValue(int((pb / len(xmlfiles)) * 100))
             if self.checkBoxExcel.isChecked():
                 for cell_obj in ws['A1':'Q' + str(row_numb)]:
                     for cell in cell_obj:
                         cell.border = border_1
                         cell.alignment = Alignment(wrapText=True)  # задаёт выравнивание "перенос по словам"
-                wb.save(directory_out + "\\" + now.strftime("%d_%m_%Y  %H-%M") +
-                        " real_estate_objects_EGRN.xlsx")
+                wb.save(os.path.join(directory_out, now.strftime("%d_%m_%Y  %H-%M") +
+                        " real_estate_objects_EGRN.xlsx"))
             if self.checkBoxShape.isChecked():
                 shp_wr.close()
             self.textBrowser.append("Получение данных из выписок XML завершено!" + chr(13) +
