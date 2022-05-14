@@ -193,7 +193,6 @@ class AbstractRealEstateObject(ABC):
         list_sovm_sobsv = []
         vse_doli_u_odnogo_chel = []
         list_doli_ga = []
-        cell_owner_doli_ga = []
         if self._extract_object_right is not None:
             for right in self._extract_object_right.findall(self._dop + 'ExtractObject/' +
                                                             self._dop + 'ObjectRight/' +
@@ -273,12 +272,7 @@ class AbstractRealEstateObject(ABC):
                     elif childs.tag == self._dop + 'NoOwner':
                         list_owner.append(childs.text)
         if len(list_type_sobstv) == len(list_owner):
-            for item in list_type_sobstv:
-                i_of_it = list_type_sobstv.index(item)
-                cell_owner.append(str(item + ' ' + list_owner[i_of_it]))
-        for item in list_doli_ga:
-            i_of_it = list_doli_ga.index(item)
-            cell_owner_doli_ga.append(str(item + ' ' + list_owner[i_of_it]))
+            cell_owner = [i + " " + k for i, k in zip(list_type_sobstv, list_owner)]
         #  если в обычных полях правообладатель не указан, то ищем в устаревших полях (из БД ГКН)
         if not cell_owner:
             if self._realty is not None:
@@ -383,14 +377,22 @@ class AbstractRealEstateObject(ABC):
             if len(list_type_sobstv) == 1 and len(list_owner) == 1:
                 return cell_owner[0]
             elif list_doli_ga:
-                if len(list_doli_ga) == len(list_owner):
-                    return 'Долевая собственность ' + ', '.join(cell_owner_doli_ga)
+                if len(list_doli_ga) == len(list_owner) and len(list_owner) <= 2:
+                    return type_sobstv + ' ' + ', '.join([i + " " + k for i, k in zip(list_doli_ga, list_owner)])
+                elif len(list_doli_ga) == len(list_owner) and len(list_owner) > 2:
+                    return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
                 elif list_doli_ga and list_dolei:
-                    if len(list_dolevikov) > 2:
+                    if len(set_dolevikov) > 2:
                         return type_sobstv + ' (' + str(max(list_dolei)) + ' долей; ' + str(
                             len(set_dolevikov)) + ' правообладателей)'
+                    elif len(set_dolevikov) == 2 and len(list_dolevikov_new) == 2:
+                        return type_sobstv + ' (' + ', '.join(list_dolevikov_new) + ')'
+                elif len(set_dolevikov) > 2:
+                    return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
+                elif len(set_dolevikov) <= 2:
+                    return type_sobstv + ' (' + ', '.join(set_dolevikov) + ')'
                 else:
-                    print('Необработанное исключение в файле ' + self.xml_file_path)
+                    print('Не удалось обработать файл: ' + self.xml_file_path)
             elif list_dolei:
                 try:
                     if len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' in set_dolevikov:
@@ -405,7 +407,7 @@ class AbstractRealEstateObject(ABC):
                         return (type_sobstv + ': ' + doli_two_persons[0] + ' ' + list_dolevikov_new[0] +
                                 ', ' + doli_two_persons[1] + ' ' + list_dolevikov_new[1])
                 except:
-                    print('не удалось обработать файл: ' + self.xml_file_path)
+                    print('Не удалось обработать файл: ' + self.xml_file_path)
             else:
                 if len(set_dolevikov) > 0:
                     return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
