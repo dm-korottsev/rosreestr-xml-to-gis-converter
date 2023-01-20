@@ -19,7 +19,7 @@ def get_dict_from_csv(filepath):
     :param filepath: str
     :return: dict
     """
-    with open(filepath, "r", newline="", encoding="cp1251") as file:
+    with open(filepath, "r", newline="", encoding="utf-8") as file:
         reader = csv.reader(file, delimiter='|', quoting=csv.QUOTE_NONE)
         dic = {row[0]: row[1] for row in reader}
     return dic

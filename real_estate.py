@@ -681,14 +681,16 @@ class AbstractRealEstateObject(ABC):
         """
         date = ''
         if self._real_estate_object is not None:
+            date_created = None
             # DateCreatedDoc - Дата постановки на учет по документу (для ранее учтенных участков)
             # для ранее учтённых может быть также заполнено DateCreated, но надо брать именно DateCreatedDoc
             if self._real_estate_object.get('DateCreatedDoc', None):
                 date_created = self._real_estate_object.get('DateCreatedDoc')
             elif self._real_estate_object.get('DateCreated', None):
                 date_created = self._real_estate_object.get('DateCreated')
-            inverted_date = re.sub('-', '.', date_created)
-            date = ".".join(inverted_date.split(".")[::-1])
+            if date_created is not None:
+                inverted_date = re.sub('-', '.', date_created)
+                date = ".".join(inverted_date.split(".")[::-1])
         return date
 
     @abstractmethod
@@ -1152,8 +1154,13 @@ class ParcelEGRN(AbstractParcel):
                             elif childs.tag == 'legal_entity':  # Юридическое лицо, орган власти
                                 entity = childs.find('entity')
                                 resident = entity.find('resident')
-                                name = resident.find('name')
-                                inn = resident.find('inn')
+                                not_resident = entity.find('not_resident')
+                                if resident is not None:
+                                    name = resident.find('name')
+                                    inn = resident.find('inn')
+                                elif not_resident is not None:
+                                    name = not_resident.find('name')
+                                    inn = None
                                 if name is not None and inn is not None:
                                     lst_holders.append(name.text + " ИНН: " + inn.text)
                                 elif name is not None:
