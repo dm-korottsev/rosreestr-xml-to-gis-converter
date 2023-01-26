@@ -270,7 +270,7 @@ class AbstractRealEstateObject(ABC):
                                     if proverka.text != '001003000000':
                                         list_owner.append(nname)
                     elif childs.tag == self._dop + 'NoOwner':
-                        list_owner.append(childs.text)
+                        pass
         if len(list_type_sobstv) == len(list_owner):
             cell_owner = [i + " " + k for i, k in zip(list_type_sobstv, list_owner)]
         #  если в обычных полях правообладатель не указан, то ищем в устаревших полях (из БД ГКН)
@@ -1228,14 +1228,15 @@ class ParcelEGRN(AbstractParcel):
         """
         list_of_encumbrances = []
         subjects_or_right_holders = []
-        encumbrance_type = ''
         if self._restrict_records is not None:
             for restrict_record in self._restrict_records.findall('restrict_record'):
+                encumbrance_type = ''
                 restrictions_encumbrances_data = restrict_record.find('restrictions_encumbrances_data')
                 restriction_encumbrance_type = restrictions_encumbrances_data.find('restriction_encumbrance_type')
-                value = restriction_encumbrance_type.find('value')
-                if value is not None:
-                    encumbrance_type = value.text
+                if restriction_encumbrance_type is not None:
+                    value = restriction_encumbrance_type.find('value')
+                    if value is not None:
+                        encumbrance_type = value.text
                 restrict_parties = restrict_record.find('restrict_parties')
                 right_holders = restrict_record.find('right_holders')
                 if restrict_parties is not None:
@@ -1355,7 +1356,6 @@ class ParcelEGRN(AbstractParcel):
                 number = None
                 date = None
                 restrictions_encumbrances_data = restrict_record.find('restrictions_encumbrances_data')
-                restriction_encumbrance_type = restrictions_encumbrances_data.find('restriction_encumbrance_type')
                 record_info = restrict_record.find('record_info')
                 period = restrictions_encumbrances_data.find('period')
                 if period is not None:
@@ -1375,7 +1375,9 @@ class ParcelEGRN(AbstractParcel):
                         if first_ddu_date is not None and transfer_deadline is not None:
                             duration = 'дата регистрации первого ДДУ ' + first_ddu_date.text + \
                                        ', срок передачи застройщиком объекта ' + transfer_deadline.text
-                encumbrance_name = restriction_encumbrance_type.find('value')
+                restriction_encumbrance_type = restrictions_encumbrances_data.find('restriction_encumbrance_type')
+                if restriction_encumbrance_type is not None:
+                    encumbrance_name = restriction_encumbrance_type.find('value')
                 if encumbrance_name is not None:
                     name = encumbrance_name.text
                 encumbrance_number = restrictions_encumbrances_data.find('restriction_encumbrance_number')
