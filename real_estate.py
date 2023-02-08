@@ -1434,21 +1434,20 @@ class ParcelEGRN(AbstractParcel):
     @property
     def estate_objects(self):
         """
-        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
-        незавершенного строительства
+        возвращает список кадастровых номеров расположенных в пределах объекта других объектов недвижимости
         :return: str
         """
-        cad_numbers = ''
+        cad_numbers_list = []
         cad_links = self._land_record.find('cad_links')
         if cad_links is not None:
             included_objects = cad_links.find('included_objects')
             if included_objects is not None:
-                included_object = included_objects.find('included_object')
-                if included_object is not None:
-                    cad_number_el = included_object.find('cad_number')
-                    if cad_number_el is not None:
-                        cad_numbers = cad_number_el.text
-        return cad_numbers
+                for included_object in included_objects.findall('included_object'):
+                    if included_object is not None:
+                        cad_number_el = included_object.find('cad_number')
+                        if cad_number_el is not None:
+                            cad_numbers_list.append(cad_number_el.text)
+        return ", ".join(cad_numbers_list)
 
     def _get_geometry_from_spatial_element(self, contour, dop_cad_num: str, result: dict):
         """
