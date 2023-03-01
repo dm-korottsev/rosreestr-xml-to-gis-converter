@@ -1709,7 +1709,7 @@ class AbstractOCC(AbstractRealEstateObject):
         else:
             return ''
 
-    def _get_geometry_from_spatial_element(self, spatial_elements: Elt.Element, dop_cad_num: str, result: dict) -> None:
+    def _get_geometry_from_spatial_element(self, spatial_elements: ElT.Element, dop_cad_num: str, result: dict) -> None:
         pos_next = 0
         for entity_spatial in spatial_elements.findall(self._dop + 'EntitySpatial'):
             coordinates = []
