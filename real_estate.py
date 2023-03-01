@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict, Union, TypeVar, Optional, List, Any
 import re
 import json
 import xml.etree.ElementTree as ElT
@@ -14,8 +15,10 @@ __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
+AbstractRealEstateObject = TypeVar("AbstractRealEstateObject")
+
 class AbstractRealEstateObject(ABC):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str) -> None:
         self.xml_file_path = xml_file_path
         self.type = None
         self._root = root
@@ -34,7 +37,7 @@ class AbstractRealEstateObject(ABC):
         self.encumbrance_classifier = get_dict_from_csv('encumbrance.csv')  # коды видов ограничений (обременений)
 
     @staticmethod
-    def create_a_real_estate_object(xml_file_path: str):
+    def create_a_real_estate_object(xml_file_path: str) -> Optional[AbstractRealEstateObject]:
         """
         Определяет xml-схему выписки на земельный участок и возвращает экземпляр соответствующего ей класса.
         В случае, если xml-схема выписки из Росреестра неизвестна, возвращает None.
@@ -61,7 +64,7 @@ class AbstractRealEstateObject(ABC):
             return None
 
     @property
-    def _real_estate_object(self):
+    def _real_estate_object(self) -> Optional[ElT.Element]:
         if self._realty is not None:
             building = self._realty.find(self._dop + 'Building')
             flat = self._realty.find(self._dop + 'Flat')
@@ -86,7 +89,7 @@ class AbstractRealEstateObject(ABC):
             return None
 
     @property
-    def parent_cad_number(self):
+    def parent_cad_number(self) -> str:
         """
         возвращает кадастровый номер объекта недвижимости
         (для обычного земельного участка - его кадастровый номер,
@@ -100,7 +103,7 @@ class AbstractRealEstateObject(ABC):
         return cad_number
 
     @abstractmethod
-    def entry_parcels(self):
+    def entry_parcels(self) -> List[Any]:
         """
         возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
         :return: list
@@ -108,7 +111,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @abstractmethod
-    def area(self):
+    def area(self) -> str:
         """
         возвращает площадь объекта недвижимости
         :return: str
@@ -116,7 +119,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @property
-    def status(self):
+    def status(self) -> str:
         """
         возвращает статус объекта недвижимости (например: учтённый, временный и т.д.)
         :return: str
@@ -128,7 +131,7 @@ class AbstractRealEstateObject(ABC):
         return st
 
     @abstractmethod
-    def address(self):
+    def address(self) -> str:
         """
         возвращает адрес объекта недвижимости в человекочитаемом виде
         :return: str
@@ -136,7 +139,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @abstractmethod
-    def district_name(self):
+    def district_name(self) -> str:
         """
         возвращает название района, в котором находится объект недвижимости
         :return: str
@@ -144,7 +147,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @abstractmethod
-    def category(self):
+    def category(self) -> str:
         """
         возвращает категорию земель (для земельных участков)
         :return: str
@@ -152,7 +155,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @abstractmethod
-    def permitted_use_by_doc(self):
+    def permitted_use_by_doc(self) -> str:
         """
         возвращает вид разрешённого использования по документу (для земельных участков)
         :return: str
@@ -160,7 +163,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @property
-    def cadastral_cost(self):
+    def cadastral_cost(self) -> str:
         """
         возвращает кадастровую стоимость объекта недвижимости (в рублях)
         :return: str
@@ -176,7 +179,7 @@ class AbstractRealEstateObject(ABC):
         return cad_cost_value
 
     @property
-    def owner(self):
+    def owner(self) -> str:
         """
         возвращает список правообладателей (вид права и лицо, владеющее этим правом)
         :return: str
@@ -436,7 +439,7 @@ class AbstractRealEstateObject(ABC):
             return ', '.join(cell_owner)
 
     @property
-    def own_name_reg_numb_date(self):
+    def own_name_reg_numb_date(self) -> str:
         """
         возвращает вид права, номер регистрации и дату регистрации права на объект недвижимости
         :return: str
@@ -480,7 +483,7 @@ class AbstractRealEstateObject(ABC):
             return '; '.join(name_numb_date)
 
     @property
-    def encumbrances(self):
+    def encumbrances(self) -> str:
         """
         возвращает список ограничений (обременений) прав и лиц, в пользу которых они установлены
         :return: str
@@ -604,7 +607,7 @@ class AbstractRealEstateObject(ABC):
             return ', '.join(new_list_arendatorov)
 
     @property
-    def encumbrances_name_reg_numb_date_duration(self):
+    def encumbrances_name_reg_numb_date_duration(self) -> str:
         """
         возвращает вид ограничения (обременения), его регистрационный номер, дату регистрации, срок действия
         :return: str
@@ -661,7 +664,7 @@ class AbstractRealEstateObject(ABC):
         return "; ".join(rental_periods)
 
     @property
-    def extract_date(self):
+    def extract_date(self) -> str:
         """
         возвращает дату выгрузки выписки из ЕГРН (день, в который была актуальной информация, содержащаяся  в выписке)
         :return: str
@@ -674,7 +677,7 @@ class AbstractRealEstateObject(ABC):
         return date
 
     @property
-    def date_of_cadastral_reg(self):
+    def date_of_cadastral_reg(self) -> str:
         """
         возвращает дату постановки объекта недвижимости на кадастровый учет (дату присвоения кадастрового номера)
         :return: str
@@ -694,7 +697,7 @@ class AbstractRealEstateObject(ABC):
         return date
 
     @abstractmethod
-    def special_notes(self):
+    def special_notes(self) -> str:
         """
         возвращает особые отметки об объекте недвижимости в ЕГРН
         :return: str
@@ -702,7 +705,7 @@ class AbstractRealEstateObject(ABC):
         pass
 
     @abstractmethod
-    def estate_objects(self):
+    def estate_objects(self) -> str:
         """
         возвращает список кадастровых номеров других объектов недвижимости, расположенных в пределах исходного объекта
         недвижимости (например, здания, сооружения, объекты незавершённого строительства, расположенные  на земельном
@@ -711,7 +714,7 @@ class AbstractRealEstateObject(ABC):
         """
         pass
 
-    def _get_geometry_from_spatial_element(self, spatial_elements, dop_cad_num: str, result: dict):
+    def _get_geometry_from_spatial_element(self, spatial_elements: ElT.Element, dop_cad_num: str, result: dict) -> None:
         points_x = []
         points_y = []
         num_point = []
@@ -761,7 +764,7 @@ class AbstractRealEstateObject(ABC):
                 result.update({dop_cad_num: coordinates})
 
     @abstractmethod
-    def geometry(self):
+    def geometry(self) -> Dict[str, List[List[float]]]:
         """
         возвращает пространственные данные объекта недвижимости (тип геометрии - полигон) в виде словаря,
         в котором ключ - кадастровый номер, значение по ключу - список координат границ полигона в формате,
@@ -772,12 +775,12 @@ class AbstractRealEstateObject(ABC):
 
 
 class AbstractParcel(AbstractRealEstateObject):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
         super().__init__(xml_file_path, settings, root, dop)
         self.type = "Земельный участок"
 
     @property
-    def entry_parcels(self):
+    def entry_parcels(self) -> List[Any]:
         """
         возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
         :return: list
@@ -790,7 +793,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return cadastral_numbers
 
     @property
-    def area(self):
+    def area(self) -> str:
         """
         возвращает площадь земельного участка в квадратных метрах
         :return: str
@@ -801,7 +804,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return parcel_area
 
     @property
-    def address(self):
+    def address(self) -> str:
         """
         возвращает адрес земельного участка в человекочитаемом виде
         :return: str
@@ -837,7 +840,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return address
 
     @property
-    def district_name(self):
+    def district_name(self) -> str:
         """
         возвращает название района, в котором находится объект недвижимости
         :return: str
@@ -852,7 +855,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return district_name
 
     @property
-    def category(self):
+    def category(self) -> str:
         """
         возвращает категорию земель
         :return: str
@@ -865,7 +868,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return category
 
     @property
-    def permitted_use_by_doc(self):
+    def permitted_use_by_doc(self) -> str:
         """
         возвращает вид разрешённого использования (приоритет - по документу, если не заполнено - по классификатору)
         :return: str
@@ -881,7 +884,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return utiliz_by_doc
 
     @property
-    def special_notes(self):
+    def special_notes(self) -> str:
         """
         возвращает особые отметки о земельном участке в ЕГРН
         :return: str
@@ -893,7 +896,7 @@ class AbstractParcel(AbstractRealEstateObject):
             return ''
 
     @property
-    def estate_objects(self):
+    def estate_objects(self) -> str:
         """
         возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
         незавершенного строительства
@@ -907,7 +910,7 @@ class AbstractParcel(AbstractRealEstateObject):
         return ', '.join(estate_objects_cad_nums)
 
     @property
-    def geometry(self):
+    def geometry(self) -> Dict[str, List[List[float]]]:
         """
         возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
         кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
@@ -931,7 +934,7 @@ class AbstractParcel(AbstractRealEstateObject):
 
 
 class ParcelKVZU(AbstractParcel):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
         super().__init__(xml_file_path, settings, root, dop)
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'smev': 'urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1',
@@ -946,7 +949,7 @@ class ParcelKVZU(AbstractParcel):
 
 
 class ParcelKPZU(AbstractParcel):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
         super().__init__(xml_file_path, settings, root, dop)
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'ns5': "urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1",
@@ -961,7 +964,7 @@ class ParcelKPZU(AbstractParcel):
 
 
 class ParcelEGRN(AbstractParcel):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
         super().__init__(xml_file_path, settings, root, dop)
         self._land_record = self._root.find('land_record')
         self._params = self._land_record.find('params')
@@ -969,7 +972,7 @@ class ParcelEGRN(AbstractParcel):
         self._restrict_records = self._root.find('restrict_records')
 
     @property
-    def parent_cad_number(self):
+    def parent_cad_number(self) -> str:
         """
         возвращает для обычного земельного участка - его кадастровый номер,
         для единого землепользования - кадастровый номер единого землепользования
@@ -981,7 +984,7 @@ class ParcelEGRN(AbstractParcel):
         return cad_number.text
 
     @property
-    def entry_parcels(self):
+    def entry_parcels(self) -> List[Any]:
         """
         возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
         :return: list
@@ -1055,7 +1058,7 @@ class ParcelEGRN(AbstractParcel):
             return ''
 
     @property
-    def permitted_use_by_doc(self):
+    def permitted_use_by_doc(self) -> str:
         """
         возвращает вид разрешённого использования (по документу)
         :return: str
@@ -1449,7 +1452,7 @@ class ParcelEGRN(AbstractParcel):
                             cad_numbers_list.append(cad_number_el.text)
         return ", ".join(cad_numbers_list)
 
-    def _get_geometry_from_spatial_element(self, contour, dop_cad_num: str, result: dict):
+    def _get_geometry_from_spatial_element(self, contour, dop_cad_num: str, result: dict) -> None:
         """
         извлекает список координат границ полигона в формате, используемом в библиотеке pyshp и записывает их в словарь
         (ключ - кадастровый номер контура, значение - координаты контура)
@@ -1501,7 +1504,7 @@ class ParcelEGRN(AbstractParcel):
         result.update({dop_cad_num: coordinates})
 
     @property
-    def geometry(self):
+    def geometry(self) -> Dict[str, List[List[float]]]:
         """
         возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
         кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
@@ -1562,7 +1565,7 @@ class AbstractOCC(AbstractRealEstateObject):
             return None
 
     @property
-    def entry_parcels(self):
+    def entry_parcels(self) -> List[Any]:
         """
         нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
         полезной информации)
@@ -1572,7 +1575,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return cadastral_numbers
 
     @property
-    def area(self):
+    def area(self) -> str:
         """
         возвращает площадь объекта недвижимости
         :return: str
@@ -1592,7 +1595,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return area
 
     @property
-    def address(self):
+    def address(self) -> str:
         """
         возвращает адрес объекта недвижимости в человекочитаемом виде
         :return: str
@@ -1644,7 +1647,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return address
 
     @property
-    def district_name(self):
+    def district_name(self) -> Optional[str]:
         district_name = ''
         real_estate_object = self._real_estate_object
         if real_estate_object is not None:
@@ -1656,7 +1659,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return district_name
 
     @property
-    def category(self):
+    def category(self) -> str:
         """
         нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
         полезной информации)
@@ -1665,7 +1668,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return '-'
 
     @property
-    def permitted_use_by_doc(self):
+    def permitted_use_by_doc(self) -> str:
         """
         нужно для возможности конвертирования разных типов объектов недвижимости в одну таблицу (для ОКС не несёт
         полезной информации)
@@ -1674,7 +1677,7 @@ class AbstractOCC(AbstractRealEstateObject):
         return '-'
 
     @property
-    def special_notes(self):
+    def special_notes(self) -> str:
         """
         возвращает особые отметки об  объекта недвижимости в ЕГРН
         :return: str
@@ -1689,7 +1692,7 @@ class AbstractOCC(AbstractRealEstateObject):
             return ''
 
     @property
-    def estate_objects(self):
+    def estate_objects(self) -> str:
         """
         возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
         незавершенного строительства
@@ -1706,7 +1709,7 @@ class AbstractOCC(AbstractRealEstateObject):
         else:
             return ''
 
-    def _get_geometry_from_spatial_element(self, spatial_elements, dop_cad_num: str, result: dict):
+    def _get_geometry_from_spatial_element(self, spatial_elements: Elt.Element, dop_cad_num: str, result: dict) -> None:
         pos_next = 0
         for entity_spatial in spatial_elements.findall(self._dop + 'EntitySpatial'):
             coordinates = []
@@ -1723,7 +1726,7 @@ class AbstractOCC(AbstractRealEstateObject):
                 result.update({dop_cad_num: coordinates})
 
     @property
-    def geometry(self):
+    def geometry(self) -> Dict[str, List[List[float]]]:
         """
         возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
         кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
