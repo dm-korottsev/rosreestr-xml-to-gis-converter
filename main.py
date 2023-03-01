@@ -1,3 +1,4 @@
+from typing import Callable, Any
 import os
 import sys
 from PyQt5 import QtCore, QtWidgets
@@ -29,12 +30,12 @@ __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
-def logger(func):
+def logger(func: Callable) -> Callable:
     """
     декоратор-логгер, записывает в файл "log.txt" ошибки, возникшие при работе функции, не изменяя имя исходной фукнкции
     """
     @functools.wraps(func)
-    def wrapped(arg):
+    def wrapped(arg: Any) -> Any:
         try:
             result = func(arg)
             return result
@@ -152,7 +153,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         архивы и файлы ЭЦП
         """
         self.textBrowser.append("Идёт извлечение выписок xml из архивов...")
-        directory = get_settings('folder_in_xml')
+        directory: str = get_settings('folder_in_xml')
         files = os.listdir(directory)
         zipfiles = list(filter(lambda x: x.endswith('.zip'), files))
         extract_all_zipfiles(zipfiles, directory)
@@ -179,7 +180,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
         переименовывает выписки из ЕГРН на земельные участки в формате: кадастровый номер---дата получения выписки
         """
         self.textBrowser.append("Идёт переименование выписок xml...")
-        directory = get_settings('folder_in_xml')
+        directory: str = get_settings('folder_in_xml')
         result_files = os.listdir(directory)
         pb = 0
         self.progressBar.setValue(0)
