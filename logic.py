@@ -1,3 +1,4 @@
+from typing import Dict, List, Union
 import re
 import json
 import csv
@@ -13,7 +14,7 @@ __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
 
 
-def get_dict_from_csv(filepath):
+def get_dict_from_csv(filepath: str) -> Dict[str, str]:
     """
     создаёт словарь Python из csv-файла c 2-мя столбцами и разделителем '|'
     :param filepath: str
@@ -25,7 +26,7 @@ def get_dict_from_csv(filepath):
     return dic
 
 
-def write_settings(key, value):
+def write_settings(key: str, value: Union[bool, str]):
     """
     сохраняет настройки программы в файл 'settings.json'
     """
@@ -36,7 +37,7 @@ def write_settings(key, value):
         json.dump(sd, f, sort_keys=True, indent=4, ensure_ascii=False)
 
 
-def get_settings(key):
+def get_settings(key: str) -> Union[bool, str]:
     """
     возвращает значение параметра настройки программы по указанному ключу, сохранённое в файле 'settings.json'
     :param key: str
@@ -46,7 +47,7 @@ def get_settings(key):
     return sd[key]
 
 
-def to_shorten_a_long_name(names):
+def to_shorten_a_long_name(names: Union[List[str], str]) -> Union[List[str], str]:
     """
     сокращает слова и словосочетания в соответствии со словарём сокращений, заданным в файле 'replace.csv'
     :param names: list or str
@@ -67,7 +68,7 @@ def to_shorten_a_long_name(names):
     return names
 
 
-def gauss_area(polygon_points):
+def gauss_area(polygon_points: List[List[float]]) -> float:
     """
     Формула площади Гаусса, определяет площадь простого многоугольника по декартовым координатам на плоскости
     В правой системе координат положительный знак площади указывает направление точек против часовой стрелки,
@@ -79,7 +80,7 @@ def gauss_area(polygon_points):
     return (two - one) / 2
 
 
-def extract_all_zipfiles(names_of_zipfiles, folder):
+def extract_all_zipfiles(names_of_zipfiles: List[str], folder: str):
     """
     Распаковывает все указанные zip-архивы в указанной папке. Входящие аргументы: список имён архивов, которые надо
     распаковать и полный путь к папке, в которой они лежат.
