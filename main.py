@@ -21,10 +21,10 @@ path_to_current_file = os.path.realpath(__file__)
 os.chdir(os.path.split(path_to_current_file)[0])
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2022"
+__copyright__ = "Copyright 2023"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.8"
+__version__ = "1.9"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -50,7 +50,7 @@ def logger(func: Callable) -> Callable:
 
 
 class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
         # соединяем события с функциями
@@ -94,37 +94,37 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             self.checkBoxReplace.setCheckState(QtCore.Qt.Unchecked)
 
     #  в случае изменения настроек записываем их в файл
-    def change_check_box_shape(self):
+    def change_check_box_shape(self) -> None:
         if self.checkBoxShape.isChecked():
             write_settings('create_esri_shape', True)
         else:
             write_settings('create_esri_shape', False)
 
-    def change_check_box_xlsx(self):
+    def change_check_box_xlsx(self) -> None:
         if self.checkBoxExcel.isChecked():
             write_settings('create_xlsx', True)
         else:
             write_settings('create_xlsx', False)
 
-    def change_check_box_rename(self):
+    def change_check_box_rename(self) -> None:
         if self.checkBoxRename.isChecked():
             write_settings('rename_files', True)
         else:
             write_settings('rename_files', False)
 
-    def change_check_box_adm(self):
+    def change_check_box_adm(self) -> None:
         if self.checkBoxAdm.isChecked():
             write_settings('adm_district', True)
         else:
             write_settings('adm_district', False)
 
-    def change_check_box_replace(self):
+    def change_check_box_replace(self) -> None:
         if self.checkBoxReplace.isChecked():
             write_settings('replace_long_names', True)
         else:
             write_settings('replace_long_names', False)
 
-    def browse_folder_in_xml(self):
+    def browse_folder_in_xml(self) -> None:
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку с выписками из ЕГРН в формате XML")
         # открыть диалог выбора директории и установить значение переменной
         # равной пути к выбранной директории
@@ -132,14 +132,14 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             self.label_input.setText(str(directory))
             write_settings('folder_in_xml', str(directory))
 
-    def browse_folder_out_xml(self):
+    def browse_folder_out_xml(self) -> None:
         directory_out = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку, в которую нужно сохранить"
                                                                          "результат")
         if directory_out:
             self.label_out.setText(str(directory_out))
             write_settings('folder_out_xml', str(directory_out))
 
-    def browse_folder_in_zip(self):
+    def browse_folder_in_zip(self) -> None:
         directory_in_zip = QtWidgets.QFileDialog.getExistingDirectory(self,
                                                                       "Выберите папку с zip-архивами выписок из ЕГРН")
         if directory_in_zip:
@@ -147,9 +147,9 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
             write_settings('folder_in_zip', str(directory_in_zip))
 
     @logger
-    def extract_xml_from_zip(self):
+    def extract_xml_from_zip(self) -> None:
         """
-        извлекает выписки из ЕГРН на земельные участки из архива zip, сохраняя исходный архив, удаляя промежуточные
+        извлекает выписки из ЕГРН из архива zip, сохраняя исходный архив, удаляя промежуточные
         архивы и файлы ЭЦП
         """
         self.textBrowser.append("Идёт извлечение выписок xml из архивов...")
@@ -175,7 +175,7 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                                 "---------------------------")
 
     @logger
-    def rename_xml(self):
+    def rename_xml(self) -> None:
         """
         переименовывает выписки из ЕГРН на земельные участки в формате: кадастровый номер---дата получения выписки
         """

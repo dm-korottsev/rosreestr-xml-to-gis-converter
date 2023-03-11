@@ -6,10 +6,10 @@ import xml.etree.ElementTree as ElT
 from logic import get_dict_from_csv, gauss_area
 
 __author__ = "Dmitry S. Korottsev"
-__copyright__ = "Copyright 2021"
+__copyright__ = "Copyright 2023"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.7"
+__version__ = "1.9"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -56,6 +56,8 @@ class AbstractRealEstateObject(ABC):
             return ParcelKPZU(xml_file_path, sd, root, d2)
         elif root.find('land_record') is not None:
             return ParcelEGRN(xml_file_path, sd, root, None)
+        elif root.find('build_record') is not None:
+            return BuildingEGRN(xml_file_path, sd, root, '')
         elif root.find(d3 + 'Realty') is not None:
             return ObjectOfCapitalConstructionKVOKS(xml_file_path, sd, root, d3)
         elif root.find(d4 + 'Realty') is not None:
@@ -708,8 +710,8 @@ class AbstractRealEstateObject(ABC):
     def estate_objects(self) -> str:
         """
         возвращает список кадастровых номеров других объектов недвижимости, расположенных в пределах исходного объекта
-        недвижимости (например, здания, сооружения, объекты незавершённого строительства, расположенные  на земельном
-        участке или квартиры, помещения в зданиии)
+        недвижимости (например, здания, сооружения, объекты незавершённого строительства, расположенные на земельном
+        участке или квартиры, помещения в здании)
         :return: str
         """
         pass
@@ -842,7 +844,7 @@ class AbstractParcel(AbstractRealEstateObject):
     @property
     def district_name(self) -> str:
         """
-        возвращает название района, в котором находится объект недвижимости
+        возвращает название района, в котором находится земельный участок
         :return: str
         """
         district_name = ''
@@ -934,7 +936,7 @@ class AbstractParcel(AbstractRealEstateObject):
 
 
 class ParcelKVZU(AbstractParcel):
-    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str) -> None:
         super().__init__(xml_file_path, settings, root, dop)
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'smev': 'urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1',
@@ -949,7 +951,7 @@ class ParcelKVZU(AbstractParcel):
 
 
 class ParcelKPZU(AbstractParcel):
-    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
+    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str) -> None:
         super().__init__(xml_file_path, settings, root, dop)
         self._extract_object_right = self._root.find(self._dop + 'ReestrExtract/' + self._dop + 'ExtractObjectRight')
         self._namespaces = {'ns5': "urn://x-artefacts-smev-gov-ru/supplementary/commons/1.0.1",
@@ -963,70 +965,33 @@ class ParcelKPZU(AbstractParcel):
         self._spat = 'ns7'
 
 
-class ParcelEGRN(AbstractParcel):
-    def __init__(self, xml_file_path: str, settings: Dict[str, Union[str, bool]], root: ElT.Element, dop: str):
-        super().__init__(xml_file_path, settings, root, dop)
-        self._land_record = self._root.find('land_record')
-        self._params = self._land_record.find('params')
-        self._right_records = self._root.find('right_records')
-        self._restrict_records = self._root.find('restrict_records')
+class ObjectEGRN(ABC):
+    def __init__(self, main_record, params, right_records, restrict_records) -> None:
+        self._main_record = main_record
+        self._params = params
+        self._right_records = right_records
+        self._restrict_records = restrict_records
 
     @property
     def parent_cad_number(self) -> str:
         """
-        возвращает для обычного земельного участка - его кадастровый номер,
-        для единого землепользования - кадастровый номер единого землепользования
+        возвращает для обычного земельного участка, здания, сооружения, объекта незавершённого строительства - его
+        кадастровый номер, для единого землепользования - кадастровый номер единого землепользования
         :return: str
         """
-        p_object = self._land_record.find('object')
+        p_object = self._main_record.find('object')
         common_data = p_object.find('common_data')
         cad_number = common_data.find('cad_number')
         return cad_number.text
 
     @property
-    def entry_parcels(self) -> List[Any]:
+    def address(self) -> str:
         """
-        возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
-        :return: list
-        """
-        cadastral_numbers = []
-        cad_links = self._land_record.find('cad_links')
-        if cad_links is not None:
-            common_land = cad_links.find('common_land')
-            if common_land is not None:
-                common_land_parts = common_land.find('common_land_parts')
-                included_cad_numbers = common_land_parts.find('included_cad_numbers')
-                for included_cad_number in included_cad_numbers.findall('included_cad_number'):
-                    cad_number = included_cad_number.find('cad_number')
-                    cadastral_numbers.append(cad_number.text)
-        # если КН ЗУ, входящих в единое землепользование, указаны только в особых отметках, берём их оттуда
-        if not cadastral_numbers:
-            sp_notes = self.special_notes
-            text = r"Кадастровые номера обособленных \(условных\) участков, входящих в единое землепользование:"
-            if re.search(text, sp_notes):
-                lst_cad_n = re.findall(r"\d+:\d+:\d+:\d+", sp_notes)
-                for entry_cad_n in lst_cad_n:
-                    cadastral_numbers.append(entry_cad_n)
-        return cadastral_numbers
-
-    @property
-    def area(self):
-        """
-        возвращает площадь земельного участка в квадратных метрах
-        :return: str
-        """
-        t_area = self._params.find('area')
-        value = t_area.find('value')
-        return value.text
-
-    @property
-    def address(self):
-        """
-        возвращает адрес земельного участка в человекочитаемом виде
+        возвращает адрес объекта недвижимости в человекочитаемом виде
         :return: str
         """
         address = ''
-        address_location = self._land_record.find('address_location')
+        address_location = self._main_record.find('address_location')
         if address_location is not None:
             address_t = address_location.find('address')
             readable_address = address_t.find('readable_address')
@@ -1035,16 +1000,16 @@ class ParcelEGRN(AbstractParcel):
         return address
 
     @property
-    def status(self):
+    def status(self) -> str:
         """
-        возвращает статус земельного участка (например: учтённый, временный и т.д.)
+        возвращает статус объекта недвижимости (например: учтённый, временный и т.д.)
         :return: str
         """
         st = self._root.find('status')
         return st.text
 
     @property
-    def category(self):
+    def category(self) -> str:
         """
         возвращает категорию земель
         :return: str
@@ -1079,12 +1044,12 @@ class ParcelEGRN(AbstractParcel):
             return ''
 
     @property
-    def cadastral_cost(self):
+    def cadastral_cost(self) -> str:
         """
-        возвращает кадастровую стоимость земельного участка (в рублях)
+        возвращает кадастровую стоимость объекта недвижимости (в рублях)
         :return: str
         """
-        cad_cost = self._land_record.find('cost')
+        cad_cost = self._main_record.find('cost')
         if cad_cost is not None:
             value = cad_cost.find('value')
             cad_cost_value = value.text
@@ -1093,7 +1058,7 @@ class ParcelEGRN(AbstractParcel):
         return cad_cost_value
 
     @property
-    def owner(self):
+    def owner(self) -> str:
         """
         возвращает список правообладателей (вид права и лицо, владеющее этим правом)
         :return: str
@@ -1193,7 +1158,7 @@ class ParcelEGRN(AbstractParcel):
             return ''
 
     @property
-    def own_name_reg_numb_date(self):
+    def own_name_reg_numb_date(self) -> str:
         """
         возвращает вид права, номер регистрации и дату регистрации права на объект недвижимости
         :return: str
@@ -1224,16 +1189,16 @@ class ParcelEGRN(AbstractParcel):
             return '; '.join(name_numb_date)
 
     @property
-    def encumbrances(self):
+    def encumbrances(self) -> str:
         """
         возвращает список ограничений (обременений) прав и лиц, в пользу которых они установлены
         :return: str
         """
         list_of_encumbrances = []
         subjects_or_right_holders = []
+        encumbrance_type = ''
         if self._restrict_records is not None:
             for restrict_record in self._restrict_records.findall('restrict_record'):
-                encumbrance_type = ''
                 restrictions_encumbrances_data = restrict_record.find('restrictions_encumbrances_data')
                 restriction_encumbrance_type = restrictions_encumbrances_data.find('restriction_encumbrance_type')
                 if restriction_encumbrance_type is not None:
@@ -1346,7 +1311,7 @@ class ParcelEGRN(AbstractParcel):
         return ', '.join(list_of_encumbrances)
 
     @property
-    def encumbrances_name_reg_numb_date_duration(self):
+    def encumbrances_name_reg_numb_date_duration(self) -> str:
         """
         возвращает вид ограничения (обременения), его регистрационный номер, дату регистрации, срок действия
         :return: str
@@ -1358,6 +1323,7 @@ class ParcelEGRN(AbstractParcel):
                 name = None
                 number = None
                 date = None
+                encumbrance_name = None
                 restrictions_encumbrances_data = restrict_record.find('restrictions_encumbrances_data')
                 record_info = restrict_record.find('record_info')
                 period = restrictions_encumbrances_data.find('period')
@@ -1398,21 +1364,21 @@ class ParcelEGRN(AbstractParcel):
             return '-'
 
     @property
-    def date_of_cadastral_reg(self):
+    def date_of_cadastral_reg(self) -> str:
         """
-        возвращает дату постановки земельного участка на кадастровый учет
+        возвращает дату постановки объекта недвижимости на кадастровый учет
         :return: str
         """
-        record_info = self._land_record.find('record_info')
+        record_info = self._main_record.find('record_info')
         registration_date = record_info.find('registration_date')
         inverted_date = re.sub('-', '.', registration_date.text[:10])
         date = ".".join(inverted_date.split(".")[::-1])
         return date
 
     @property
-    def extract_date(self):
+    def extract_date(self) -> str:
         """
-        возвращает дату выгрузки выписки из ЕГРН (день, в который была актуальной информация, содержащаяся  в выписке)
+        возвращает дату выгрузки выписки из ЕГРН (день, в который была актуальной информация, содержащаяся в выписке)
         :return: str
         """
         details_statement = self._root.find('details_statement')
@@ -1423,25 +1389,25 @@ class ParcelEGRN(AbstractParcel):
         return date
 
     @property
-    def special_notes(self):
+    def special_notes(self) -> str:
         """
-        возвращает особые отметки о земельном участке в ЕГРН
+        возвращает особые отметки об объекте недвижимости в ЕГРН
         :return: str
         """
-        spec_notes = self._land_record.find('special_notes')
+        spec_notes = self._main_record.find('special_notes')
         if spec_notes is not None:
             return spec_notes.text
         else:
             return ''
 
     @property
-    def estate_objects(self):
+    def estate_objects(self) -> str:
         """
         возвращает список кадастровых номеров расположенных в пределах объекта других объектов недвижимости
         :return: str
         """
         cad_numbers_list = []
-        cad_links = self._land_record.find('cad_links')
+        cad_links = self._main_record.find('cad_links')
         if cad_links is not None:
             included_objects = cad_links.find('included_objects')
             if included_objects is not None:
@@ -1503,6 +1469,57 @@ class ParcelEGRN(AbstractParcel):
                         coordinates.append(poly[::-1])
         result.update({dop_cad_num: coordinates})
 
+
+
+class ParcelEGRN(ObjectEGRN, AbstractParcel):
+    """
+    Класс для обработки выписок на земельные участки по XML схеме extract_about_property_land_v01.xsd
+    (Номер версии – 01)
+    """
+    def __init__(self, xml_file_path, settings, root, dop) -> None:
+        AbstractParcel.__init__(self, xml_file_path, settings, root, dop)
+        self._main_record = self._root.find('land_record')
+        self._params = self._main_record.find('params')
+        self._right_records = self._root.find('right_records')
+        self._restrict_records = self._root.find('restrict_records')
+        ObjectEGRN.__init__(self, self._main_record, self._params, self._right_records, self._restrict_records)
+
+    @property
+    def area(self) -> str:
+        """
+        возвращает площадь земельного участка в квадратных метрах
+        :return: str
+        """
+        t_area = self._params.find('area')
+        value = t_area.find('value')
+        return value.text
+
+    @property
+    def entry_parcels(self) -> List[str]:
+        """
+        возвращает список кадастровых номеров земельных участков, входящих в состав единого землепользования
+        :return: list
+        """
+        cadastral_numbers = []
+        cad_links = self._main_record.find('cad_links')
+        if cad_links is not None:
+            common_land = cad_links.find('common_land')
+            if common_land is not None:
+                common_land_parts = common_land.find('common_land_parts')
+                included_cad_numbers = common_land_parts.find('included_cad_numbers')
+                for included_cad_number in included_cad_numbers.findall('included_cad_number'):
+                    cad_number = included_cad_number.find('cad_number')
+                    cadastral_numbers.append(cad_number.text)
+        # если КН ЗУ, входящих в единое землепользование, указаны только в особых отметках, берём их оттуда
+        if not cadastral_numbers:
+            sp_notes = self.special_notes
+            text = r"Кадастровые номера обособленных \(условных\) участков, входящих в единое землепользование:"
+            if re.search(text, sp_notes):
+                lst_cad_n = re.findall(r"\d+:\d+:\d+:\d+", sp_notes)
+                for entry_cad_n in lst_cad_n:
+                    cadastral_numbers.append(entry_cad_n)
+        return cadastral_numbers
+
     @property
     def geometry(self) -> Dict[str, List[List[float]]]:
         """
@@ -1512,7 +1529,7 @@ class ParcelEGRN(AbstractParcel):
         :return: dict
         """
         result = {}
-        contours_location = self._land_record.find('contours_location')
+        contours_location = self._main_record.find('contours_location')
         if contours_location is not None:
             contours = contours_location.find('contours')
             if contours is not None:
@@ -1530,7 +1547,7 @@ class ParcelEGRN(AbstractParcel):
 
 
 class AbstractOCC(AbstractRealEstateObject):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path, settings, root, dop) -> None:
         super().__init__(xml_file_path, settings, root, dop)
         self.type = "Объект капитального строительства"
         self._realty = self._root.find(self._dop + 'Realty')
@@ -1648,6 +1665,10 @@ class AbstractOCC(AbstractRealEstateObject):
 
     @property
     def district_name(self) -> Optional[str]:
+        """
+        Возвращает название района, в котором расположен объект недвижимости
+        :return: str
+        """
         district_name = ''
         real_estate_object = self._real_estate_object
         if real_estate_object is not None:
@@ -1679,7 +1700,7 @@ class AbstractOCC(AbstractRealEstateObject):
     @property
     def special_notes(self) -> str:
         """
-        возвращает особые отметки об  объекта недвижимости в ЕГРН
+        возвращает особые отметки об объекте недвижимости в ЕГРН
         :return: str
         """
         real_estate_object = self._real_estate_object
@@ -1689,13 +1710,12 @@ class AbstractOCC(AbstractRealEstateObject):
         if spec_notes is not None:
             return spec_notes.text
         else:
-            return ''
+            return '-'
 
     @property
     def estate_objects(self) -> str:
         """
-        возвращает список кадастровых номеров расположенных в пределах земельного участка зданий, сооружений, объектов
-        незавершенного строительства
+        возвращает список кадастровых номеров расположенных в пределах объекта недвижимости других объектов недвижимости
         :return: str
         """
         estate_objects_cad_nums = []
@@ -1707,7 +1727,7 @@ class AbstractOCC(AbstractRealEstateObject):
                     estate_objects_cad_nums.append(flat.get('CadastralNumber'))
             return ', '.join(estate_objects_cad_nums)
         else:
-            return ''
+            return '-'
 
     def _get_geometry_from_spatial_element(self, spatial_elements: ElT.Element, dop_cad_num: str, result: dict) -> None:
         pos_next = 0
@@ -1728,7 +1748,7 @@ class AbstractOCC(AbstractRealEstateObject):
     @property
     def geometry(self) -> Dict[str, List[List[float]]]:
         """
-        возвращает пространственные данные земельного участка (тип геометрии - полигон) в виде словаря, в котором ключ -
+        возвращает пространственные данные объекта недвижимости (тип геометрии - полигон) в виде словаря, в котором ключ -
         кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
         pyshp
         :return: dict
@@ -1749,10 +1769,68 @@ class AbstractOCC(AbstractRealEstateObject):
 
 
 class ObjectOfCapitalConstructionKVOKS(AbstractOCC):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path, settings, root, dop) -> None:
         super().__init__(xml_file_path, settings, root, dop)
 
 
 class ObjectOfCapitalConstructionKPOKS(AbstractOCC):
-    def __init__(self, xml_file_path, settings, root, dop):
+    def __init__(self, xml_file_path, settings, root, dop) -> None:
         super().__init__(xml_file_path, settings, root, dop)
+
+
+class BuildingEGRN(ObjectEGRN, AbstractOCC):
+    """
+    Класс для обработки выписок на здания по XML схеме extract_about_property_build_v01.xsd (Номер версии – 01)
+    """
+    def __init__(self, xml_file_path, settings, root, dop) -> None:
+        AbstractOCC.__init__(self, xml_file_path, settings, root, dop)
+        self._main_record = self._root.find('build_record')
+        self._params = self._main_record.find('params')
+        self._right_records = self._root.find('right_records')
+        self._restrict_records = self._root.find('restrict_records')
+        ObjectEGRN.__init__(self, self._main_record, self._params, self._right_records, self._restrict_records)
+
+    @property
+    def _real_estate_object(self) -> None:
+        return None
+
+    @property
+    def area(self) -> str:
+        """
+        возвращает площадь здания в квадратных метрах
+        :return: str
+        """
+        t_area = self._params.find('area')
+        value = t_area.text
+        return value
+
+    @property
+    def estate_objects(self) -> str:
+        """
+        возвращает список кадастровых номеров помещений, входящих в состав здания
+        :return: list
+        """
+        cadastral_numbers = []
+        cad_links = self._main_record.find('cad_links')
+        if cad_links is not None:
+            room_cad_numbers = cad_links.find('room_cad_numbers')
+            if room_cad_numbers is not None:
+                for room_cad_number in room_cad_numbers.findall('room_cad_number'):
+                    cad_number = room_cad_number.find('cad_number')
+                    cadastral_numbers.append(cad_number.text)
+        return ', '.join(cadastral_numbers)
+
+    @property
+    def geometry(self) -> Dict[str, List[List[float]]]:
+        """
+        возвращает пространственные данные здания (тип геометрии - полигон) в виде словаря, в котором ключ -
+        кадастровый номер, значение по ключу - список координат границ полигона в формате, используемом в библиотеке
+        pyshp
+        :return: dict
+        """
+        result = {}
+        contours = self._main_record.find('contours')
+        if contours is not None:
+            for contour in contours.findall('contour'):
+                self._get_geometry_from_spatial_element(contour, self.parent_cad_number, result)
+        return result

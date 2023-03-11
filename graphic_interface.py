@@ -678,7 +678,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow",
-                                             "Конвертер XML выписок из ЕГРН. Версия: 1.8"))
+                                             "Конвертер XML выписок из ЕГРН. Версия: 1.9"))
         self.btnStart.setText(_translate("MainWindow", "Начать обработку!"))
         self.label_t1.setText(_translate("MainWindow", "Результат сохраняем в:"))
         self.label_out.setText(_translate("MainWindow", "Папка не выбрана"))
@@ -702,7 +702,7 @@ class Ui_MainWindow(object):
                                         "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#00007f;\">2. Выберите формат обрабатываемых файлов:</span></p></body></html>"))
         self.checkBoxRename.setText(_translate("MainWindow",
                                                "Переименовать исходные файлы XML в соответствии с кадастровым номером и датой получения"))
-        self.label.setText(_translate("MainWindow", "© Д.С. Коротцев, 2021"))
+        self.label.setText(_translate("MainWindow", "© Д.С. Коротцев, 2023"))
         self.checkBoxReplace.setText(_translate("MainWindow",
                                                 "Сократить длинные названия (например: \"Акционерное общество\" ---> \"АО\")"))
         self.checkBoxShape.setText(_translate("MainWindow", "SHP (Esri Shapefile, используется в ArcGIS, QGIS)"))
