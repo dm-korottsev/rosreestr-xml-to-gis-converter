@@ -9,7 +9,7 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2023"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.9"
+__version__ = "1.10"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -195,6 +195,7 @@ class AbstractRealEstateObject(ABC):
         cell_owner = []
         doli_two_persons = []
         list_dolevikov_new = []
+        list_dolevikov_new_unique = []
         list_sovm_sobsv = []
         vse_doli_u_odnogo_chel = []
         list_doli_ga = []
@@ -360,6 +361,10 @@ class AbstractRealEstateObject(ABC):
             for s_up in list_dolevikov:
                 result = s_up.title()
                 list_dolevikov_new.append(result)
+        if 0 < len(set_dolevikov) < 3:
+            for s_up in set_dolevikov:
+                result = s_up.title()
+                list_dolevikov_new_unique.append(result)
         # Для земель лесного или водного фонда собственником по умолчанию является РФ
         if (cell_owner == [] and self.category == 'Земли лесного фонда') or (cell_owner == [] and
                                                                              self.category == 'Земли водного фонда'):
@@ -380,7 +385,10 @@ class AbstractRealEstateObject(ABC):
                     cell_owner.append(result)
         if type_sobstv == 'Долевая собственность':
             if len(list_type_sobstv) == 1 and len(list_owner) == 1:
-                return cell_owner[0]
+                if cell_owner[0] is not None:
+                    return cell_owner[0]
+                else:
+                    return ''
             elif list_doli_ga:
                 if len(list_doli_ga) == len(list_owner) and len(list_owner) <= 2:
                     return type_sobstv + ' ' + ', '.join([i + " " + k for i, k in zip(list_doli_ga, list_owner)])
@@ -390,8 +398,9 @@ class AbstractRealEstateObject(ABC):
                     if len(set_dolevikov) > 2:
                         return type_sobstv + ' (' + str(max(list_dolei)) + ' долей; ' + str(
                             len(set_dolevikov)) + ' правообладателей)'
-                    elif len(set_dolevikov) == 2 and len(list_dolevikov_new) == 2:
-                        return type_sobstv + ' (' + ', '.join(list_dolevikov_new) + ')'
+                    elif len(set_dolevikov) == 2 and list_dolei:
+                        return type_sobstv + ' ' + ', '.join(list_dolevikov_new) + ' (' + str(max(list_dolei)) + \
+                                ' долей)'
                 elif len(set_dolevikov) > 2:
                     return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
                 elif len(set_dolevikov) <= 2:
@@ -403,6 +412,8 @@ class AbstractRealEstateObject(ABC):
                     if len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' in set_dolevikov:
                         return type_sobstv + ' (' + str(max(list_dolei)) + \
                                ' долей; данные о правообладателях отсутствуют)'
+                    elif len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' not in set_dolevikov:
+                        return type_sobstv + ' (' + str(max(list_dolei)) + ' долей)' + list_dolevikov_new[0]
                     elif len(list_dolevikov) > 2:
                         return type_sobstv + ' (' + str(max(list_dolei)) + ' долей; ' + str(
                             len(set_dolevikov)) + ' правообладателей)'
@@ -417,7 +428,10 @@ class AbstractRealEstateObject(ABC):
                 if len(set_dolevikov) > 0:
                     return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
             if len(list_type_sobstv) > 0 and len(list_owner) == 0:
-                return type_sobstv
+                if type_sobstv is not None:
+                    return type_sobstv
+                else:
+                    return ''
         elif list_sovm_sobsv:
             if list_sovm_sobsv != list_owner:
                 return 'Совместная собственность ' + ', '.join(list_sovm_sobsv) + ', ' + ', '.join(cell_owner)
@@ -437,6 +451,8 @@ class AbstractRealEstateObject(ABC):
                 if (len(list_owner) == len(doli_two_persons) + 1) and list_type_sobstv != []:
                     dopzap = ', ' + str(list_type_sobstv[0]) + ' ' + list_owner[len(list_owner) - 1]
                 return ', '.join(vse_doli_u_odnogo_chel) + dopzap
+        elif not cell_owner:
+            return ''
         else:
             return ', '.join(cell_owner)
 
@@ -529,14 +545,19 @@ class AbstractRealEstateObject(ABC):
                                 if child.tag == self._dop + 'Organization':
                                     content = child.find(self._dop + 'Content')
                                     nname = content.text
-                                    nname = re.sub(", ИНН", " ИНН", nname)
+                                    if nname is not None:
+                                        nname = re.sub(", ИНН", " ИНН", nname)
+                                    else:
+                                        nname = "н/д"
                                     if str(obrem_name + ' ' + nname) not in list_arendatorov:
                                         list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
                                 if child.tag == self._dop + 'Governance':
                                     names = child.find(self._dop + 'Name')
-                                    nname = names.text + ' '
-                                    if str(obrem_name + ' ' + nname) not in list_arendatorov:
-                                        list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
+                                    if names is not None:
+                                        if names.text is not None:
+                                            nname = names.text + ' '
+                                            if str(obrem_name + ' ' + nname) not in list_arendatorov:
+                                                list_arendatorov.append(str(obrem_name + ' ' + nname + obrem_text))
             if set_obrem is not set():
                 if len(set_obrem) == 1:
                     for i in set_obrem:
@@ -1080,6 +1101,8 @@ class ObjectEGRN(ABC):
                     r_type_list.append(value.text)
                 if r_type == 'Общая долевая собственность':
                     shares = right_data.find('shares')
+                    numerator = None
+                    denominator = None
                     if shares is not None:
                         share = shares.find('share')
                         numerator_el = share.find('numerator')
@@ -1088,8 +1111,10 @@ class ObjectEGRN(ABC):
                         denominator = denominator_el.text
                     else:
                         share_description = right_data.find('share_description')
-                        numerator = share_description.text.split("/")[0]
-                        denominator = share_description.text.split("/")[1]
+                        num_den_list = share_description.text.split("/")
+                        if len(num_den_list) > 1:
+                            numerator = num_den_list[0]
+                            denominator = num_den_list[1]
                     if numerator is not None and denominator is not None:
                         share_list.append(numerator + '/' + denominator)
                         denominators.add(int(denominator))
@@ -1103,6 +1128,33 @@ class ObjectEGRN(ABC):
                                 patronymic = childs.find('patronymic')
                                 if surname is not None and name is not None and patronymic is not None:
                                     shared_ownership_list.append(surname.text + ' ' + name.text + ' ' + patronymic.text)
+                                elif surname is not None and name is not None :
+                                    shared_ownership_list.append(surname.text + ' ' + name.text)
+                            elif childs.tag == 'public_formation':  # Публично-правовое образование
+                                public_formation_type = childs.find('public_formation_type')
+                                for child in public_formation_type:
+                                    if child.tag == 'russia' or child.tag == 'subject_of_rf':
+                                        name = child.find('name')
+                                        value = name.find('value')
+                                        if value is not None:
+                                            shared_ownership_list.append(value.text)
+                            elif childs.tag == 'legal_entity':  # Юридическое лицо, орган власти
+                                entity = childs.find('entity')
+                                resident = entity.find('resident')
+                                not_resident = entity.find('not_resident')
+                                inn = None
+                                name = None
+                                if resident is not None:
+                                    name = resident.find('name')
+                                    inn = resident.find('inn')
+                                elif not_resident is not None:
+                                    name = not_resident.find('name')
+                                if name is not None and inn is not None:
+                                    shared_ownership_list.append(name.text + " ИНН: " + inn.text)
+                                elif name is not None:
+                                    shared_ownership_list.append(name.text)
+                            elif childs.tag == 'another':  # Иной субъект права
+                                pass
                     else:
                         for childs in right_holder:
                             if childs.tag == 'public_formation':  # Публично-правовое образование
@@ -1119,16 +1171,19 @@ class ObjectEGRN(ABC):
                                 patronymic = childs.find('patronymic')
                                 if surname is not None and name is not None and patronymic is not None:
                                     lst_holders.append(surname.text + ' ' + name.text + ' ' + patronymic.text)
+                                elif surname is not None and name is not None:
+                                    lst_holders.append(surname.text + ' ' + name.text)
                             elif childs.tag == 'legal_entity':  # Юридическое лицо, орган власти
                                 entity = childs.find('entity')
                                 resident = entity.find('resident')
                                 not_resident = entity.find('not_resident')
+                                inn = None
+                                name = None
                                 if resident is not None:
                                     name = resident.find('name')
                                     inn = resident.find('inn')
                                 elif not_resident is not None:
                                     name = not_resident.find('name')
-                                    inn = None
                                 if name is not None and inn is not None:
                                     lst_holders.append(name.text + " ИНН: " + inn.text)
                                 elif name is not None:
@@ -1137,21 +1192,32 @@ class ObjectEGRN(ABC):
                                 pass
         if len(r_type_list) == len(lst_holders):
             for i in range(len(r_type_list)):
-                cells_owners.append(r_type_list[i] + ' ' + lst_holders[i])
+                if r_type_list[i] is not None and lst_holders[i] is not None:
+                    cells_owners.append(r_type_list[i] + ' ' + lst_holders[i])
+                elif r_type_list[i] is not None:
+                    cells_owners.append(r_type_list[i])
+                elif lst_holders[i] is not None:
+                    cells_owners.append(lst_holders[i])
         else:
             cells_owners.append(r_type + ' ' + ', '.join(lst_holders))
         if r_type != '' and lst_holders != []:
             return ', '.join(cells_owners)
         elif r_type != '' and shared_ownership_list != []:
             if r_type == 'Общая долевая собственность':
-                if len(shared_ownership_list) > 2:
+                if len(shared_ownership_list) > 2 and denominators:
                     return r_type + '(' + str(max(denominators)) + ' долей; ' + str(len(shared_ownership_list)) + \
                            ' правообладателей)'
-                elif len(shared_ownership_list) == 2:
+                elif len(shared_ownership_list) > 2 and not denominators:
+                    return r_type + ' ; ' + str(len(shared_ownership_list)) + ' правообладателей)'
+                elif len(shared_ownership_list) == 2 and len(share_list) == 2:
                     return r_type + ': ' + share_list[0] + ' ' + shared_ownership_list[0] + ', ' + share_list[1] + \
                            ' ' + shared_ownership_list[1]
-                elif len(shared_ownership_list) == 1:
+                elif len(shared_ownership_list) == 2 and len(share_list) == 0:
+                    return r_type + ': ' + shared_ownership_list[0] + ', ' + shared_ownership_list[1]
+                elif len(shared_ownership_list) == 1 and len(share_list) == 1:
                     return r_type + ': ' + share_list[0] + ' ' + shared_ownership_list[0]
+                elif len(shared_ownership_list) == 1:
+                    return r_type + ': ' + shared_ownership_list[0]
         elif r_type != '':
             return r_type
         else:
