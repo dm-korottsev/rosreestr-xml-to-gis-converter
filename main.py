@@ -360,7 +360,6 @@ class ConvXMLApp(QtWidgets.QMainWindow, graphic_interface.Ui_MainWindow):
                     status = re.sub(pattern, '', real_estate_object.status)
                     category = real_estate_object.category
                     permitted_use_by_doc = re.sub(pattern, '', real_estate_object.permitted_use_by_doc)
-                    print(real_estate_object.parent_cad_number)
                     owner = re.sub(pattern, '', real_estate_object.owner)
                     own_name_reg_numb_date = real_estate_object.own_name_reg_numb_date
                     encumbrances = re.sub(pattern, '', real_estate_object.encumbrances)
