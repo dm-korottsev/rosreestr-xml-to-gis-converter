@@ -9,7 +9,7 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2023"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.10"
+__version__ = "1.11"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -195,7 +195,6 @@ class AbstractRealEstateObject(ABC):
         cell_owner = []
         doli_two_persons = []
         list_dolevikov_new = []
-        list_dolevikov_new_unique = []
         list_sovm_sobsv = []
         vse_doli_u_odnogo_chel = []
         list_doli_ga = []
@@ -361,10 +360,6 @@ class AbstractRealEstateObject(ABC):
             for s_up in list_dolevikov:
                 result = s_up.title()
                 list_dolevikov_new.append(result)
-        if 0 < len(set_dolevikov) < 3:
-            for s_up in set_dolevikov:
-                result = s_up.title()
-                list_dolevikov_new_unique.append(result)
         # Для земель лесного или водного фонда собственником по умолчанию является РФ
         if (cell_owner == [] and self.category == 'Земли лесного фонда') or (cell_owner == [] and
                                                                              self.category == 'Земли водного фонда'):
@@ -400,7 +395,7 @@ class AbstractRealEstateObject(ABC):
                             len(set_dolevikov)) + ' правообладателей)'
                     elif len(set_dolevikov) == 2 and list_dolei:
                         return type_sobstv + ' ' + ', '.join(list_dolevikov_new) + ' (' + str(max(list_dolei)) + \
-                                ' долей)'
+                            ' долей)'
                 elif len(set_dolevikov) > 2:
                     return type_sobstv + ' (' + str(len(set_dolevikov)) + ' правообладателей)'
                 elif len(set_dolevikov) <= 2:
@@ -411,7 +406,7 @@ class AbstractRealEstateObject(ABC):
                 try:
                     if len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' in set_dolevikov:
                         return type_sobstv + ' (' + str(max(list_dolei)) + \
-                               ' долей; данные о правообладателях отсутствуют)'
+                            ' долей; данные о правообладателях отсутствуют)'
                     elif len(set_dolevikov) == 1 and 'ДАННЫЕ О ПРАВООБЛАДАТЕЛЕ ОТСУТСТВУЮТ' not in set_dolevikov:
                         return type_sobstv + ' (' + str(max(list_dolei)) + ' долей)' + list_dolevikov_new[0]
                     elif len(list_dolevikov) > 2:
@@ -603,7 +598,7 @@ class AbstractRealEstateObject(ABC):
                         patronymic = obr_gkn_person.find(self._dop + 'Patronymic')
                         if family_name is not None and first_name is not None and patronymic is not None:
                             type_name_enc_gkn = self.encumbrance_classifier[type_obr_gkn.text] + ' ' + \
-                                            family_name.text + ' ' + first_name.text + ' ' + patronymic.text
+                                                family_name.text + ' ' + first_name.text + ' ' + patronymic.text
                         if type_name_enc_gkn not in list_arendatorov:
                             list_arendatorov.append(type_name_enc_gkn)
                     elif type_obr_gkn is not None:
@@ -1105,16 +1100,18 @@ class ObjectEGRN(ABC):
                     denominator = None
                     if shares is not None:
                         share = shares.find('share')
-                        numerator_el = share.find('numerator')
-                        denominator_el = share.find('denominator')
-                        numerator = numerator_el.text
-                        denominator = denominator_el.text
+                        if share is not None:
+                            numerator_el = share.find('numerator')
+                            denominator_el = share.find('denominator')
+                            numerator = numerator_el.text
+                            denominator = denominator_el.text
                     else:
                         share_description = right_data.find('share_description')
-                        num_den_list = share_description.text.split("/")
-                        if len(num_den_list) > 1:
-                            numerator = num_den_list[0]
-                            denominator = num_den_list[1]
+                        if share_description is not None:
+                            num_den_list = share_description.text.split("/")
+                            if len(num_den_list) > 1:
+                                numerator = num_den_list[0]
+                                denominator = num_den_list[1]
                     if numerator is not None and denominator is not None:
                         share_list.append(numerator + '/' + denominator)
                         denominators.add(int(denominator))
@@ -1128,20 +1125,27 @@ class ObjectEGRN(ABC):
                                 patronymic = childs.find('patronymic')
                                 if surname is not None and name is not None and patronymic is not None:
                                     shared_ownership_list.append(surname.text + ' ' + name.text + ' ' + patronymic.text)
-                                elif surname is not None and name is not None :
+                                elif surname is not None and name is not None:
                                     shared_ownership_list.append(surname.text + ' ' + name.text)
+                                elif name is not None:
+                                    shared_ownership_list.append(name.text)
                             elif childs.tag == 'public_formation':  # Публично-правовое образование
                                 public_formation_type = childs.find('public_formation_type')
                                 for child in public_formation_type:
-                                    if child.tag == 'russia' or child.tag == 'subject_of_rf':
+                                    if child.tag == 'russia' or child.tag == 'subject_of_rf' or \
+                                            child.tag == 'foreign_public':
                                         name = child.find('name')
                                         value = name.find('value')
                                         if value is not None:
                                             shared_ownership_list.append(value.text)
+                                    elif child.tag == 'union_state' or child.tag == 'municipality':
+                                        name = child.find('name')
+                                        shared_ownership_list.append(name.text)
                             elif childs.tag == 'legal_entity':  # Юридическое лицо, орган власти
                                 entity = childs.find('entity')
                                 resident = entity.find('resident')
                                 not_resident = entity.find('not_resident')
+                                government_entity = entity.find('government_entity')
                                 inn = None
                                 name = None
                                 if resident is not None:
@@ -1149,6 +1153,8 @@ class ObjectEGRN(ABC):
                                     inn = resident.find('inn')
                                 elif not_resident is not None:
                                     name = not_resident.find('name')
+                                elif government_entity is not None:
+                                    name = government_entity.find('full_name')
                                 if name is not None and inn is not None:
                                     shared_ownership_list.append(name.text + " ИНН: " + inn.text)
                                 elif name is not None:
@@ -1160,11 +1166,15 @@ class ObjectEGRN(ABC):
                             if childs.tag == 'public_formation':  # Публично-правовое образование
                                 public_formation_type = childs.find('public_formation_type')
                                 for child in public_formation_type:
-                                    if child.tag == 'russia' or child.tag == 'subject_of_rf':
+                                    if child.tag == 'russia' or child.tag == 'subject_of_rf' or \
+                                            child.tag == 'foreign_public':
                                         name = child.find('name')
                                         value = name.find('value')
                                         if value is not None:
                                             lst_holders.append(value.text)
+                                    elif child.tag == 'union_state' or child.tag == 'municipality':
+                                        name = child.find('name')
+                                        lst_holders.append(name.text)
                             elif childs.tag == 'individual':  # Физическое лицо
                                 surname = childs.find('surname')
                                 name = childs.find('name')
@@ -1173,10 +1183,13 @@ class ObjectEGRN(ABC):
                                     lst_holders.append(surname.text + ' ' + name.text + ' ' + patronymic.text)
                                 elif surname is not None and name is not None:
                                     lst_holders.append(surname.text + ' ' + name.text)
+                                elif name is not None:
+                                    lst_holders.append(name.text)
                             elif childs.tag == 'legal_entity':  # Юридическое лицо, орган власти
                                 entity = childs.find('entity')
                                 resident = entity.find('resident')
                                 not_resident = entity.find('not_resident')
+                                government_entity = entity.find('government_entity')
                                 inn = None
                                 name = None
                                 if resident is not None:
@@ -1184,6 +1197,8 @@ class ObjectEGRN(ABC):
                                     inn = resident.find('inn')
                                 elif not_resident is not None:
                                     name = not_resident.find('name')
+                                elif government_entity is not None:
+                                    name = government_entity.find('full_name')
                                 if name is not None and inn is not None:
                                     lst_holders.append(name.text + " ИНН: " + inn.text)
                                 elif name is not None:
@@ -1206,12 +1221,12 @@ class ObjectEGRN(ABC):
             if r_type == 'Общая долевая собственность':
                 if len(shared_ownership_list) > 2 and denominators:
                     return r_type + '(' + str(max(denominators)) + ' долей; ' + str(len(shared_ownership_list)) + \
-                           ' правообладателей)'
+                        ' правообладателей)'
                 elif len(shared_ownership_list) > 2 and not denominators:
                     return r_type + ' ; ' + str(len(shared_ownership_list)) + ' правообладателей)'
                 elif len(shared_ownership_list) == 2 and len(share_list) == 2:
                     return r_type + ': ' + share_list[0] + ' ' + shared_ownership_list[0] + ', ' + share_list[1] + \
-                           ' ' + shared_ownership_list[1]
+                        ' ' + shared_ownership_list[1]
                 elif len(shared_ownership_list) == 2 and len(share_list) == 0:
                     return r_type + ': ' + shared_ownership_list[0] + ', ' + shared_ownership_list[1]
                 elif len(shared_ownership_list) == 1 and len(share_list) == 1:
@@ -1304,6 +1319,10 @@ class ObjectEGRN(ABC):
                             if surname is not None and name is not None and patronymic is not None:
                                 list_of_encumbrances.append(encumbrance_type + ' ' + surname.text + ' ' + name.text +
                                                             ' ' + patronymic.text)
+                            elif surname is not None and name is not None:
+                                list_of_encumbrances.append(encumbrance_type + ' ' + surname.text + ' ' + name.text)
+                            elif name is not None:
+                                list_of_encumbrances.append(encumbrance_type + name.text)
                         elif childs.tag == 'legal_entity':
                             entity = childs.find('entity')
                             for entity_out in entity:
@@ -1499,22 +1518,23 @@ class ObjectEGRN(ABC):
         coordinates = []
         for entity_spatial in contour.findall('entity_spatial'):
             spatial_elements = entity_spatial.find('spatials_elements')
-            for spatial_element in spatial_elements.findall('spatial_element'):
-                ordinates = spatial_element.find('ordinates')
-                for ordinate in ordinates.findall('ordinate'):
-                    coord_x = ordinate.find('x')
-                    coord_y = ordinate.find('_y')
-                    if coord_y is None:
-                        coord_y = ordinate.find('y')
-                    points_x.append(float(coord_x.text))
-                    points_y.append(float(coord_y.text))
-                    if coord_x.text + coord_y.text not in num_point:
-                        num_point.append(coord_x.text + coord_y.text)
-                    else:
-                        position = int(pos_next)
-                        pos_next = len(points_x) + 1
-                        multipolygon.update({position: pos_next})
-                        num_point.append(coord_x.text + coord_y.text)
+            if spatial_elements is not None:
+                for spatial_element in spatial_elements.findall('spatial_element'):
+                    ordinates = spatial_element.find('ordinates')
+                    for ordinate in ordinates.findall('ordinate'):
+                        coord_x = ordinate.find('x')
+                        coord_y = ordinate.find('_y')
+                        if coord_y is None:
+                            coord_y = ordinate.find('y')
+                        points_x.append(float(coord_x.text))
+                        points_y.append(float(coord_y.text))
+                        if coord_x.text + coord_y.text not in num_point:
+                            num_point.append(coord_x.text + coord_y.text)
+                        else:
+                            position = int(pos_next)
+                            pos_next = len(points_x) + 1
+                            multipolygon.update({position: pos_next})
+                            num_point.append(coord_x.text + coord_y.text)
         if points_x != [] and points_y != []:
             for key in multipolygon:
                 if key > 0:
