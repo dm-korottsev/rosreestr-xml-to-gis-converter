@@ -9,7 +9,7 @@ __author__ = "Dmitry S. Korottsev"
 __copyright__ = "Copyright 2023"
 __credits__ = []
 __license__ = "GPL v3"
-__version__ = "1.11"
+__version__ = "1.12"
 __maintainer__ = "Dmitry S. Korottsev"
 __email__ = "dm-korottev@yandex.ru"
 __status__ = "Development"
@@ -1467,11 +1467,14 @@ class ObjectEGRN(ABC):
         :return: str
         """
         details_statement = self._root.find('details_statement')
-        group_top_requisites = details_statement.find('group_top_requisites')
-        date_formation = group_top_requisites.find('date_formation')
-        inverted_date = re.sub('-', '.', date_formation.text[:10])
-        date = ".".join(inverted_date.split(".")[::-1])
-        return date
+        if details_statement is not None:
+            group_top_requisites = details_statement.find('group_top_requisites')
+            date_formation = group_top_requisites.find('date_formation')
+            inverted_date = re.sub('-', '.', date_formation.text[:10])
+            date = ".".join(inverted_date.split(".")[::-1])
+            return date
+        else:
+            return ''
 
     @property
     def special_notes(self) -> str:

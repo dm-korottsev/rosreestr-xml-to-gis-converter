@@ -5,10 +5,11 @@
 Поддерживает следующие xml схемы выписок из ЕГРН:
 1. urn://x-artefacts-rosreestr-ru/outgoing/kvzu/7.0.1 (Выписка полная из ЕГРН на земельный участок)
 2. urn://x-artefacts-rosreestr-ru/outgoing/kpzu/6.0.1 (Выписка краткая из ЕГРН на земельный участок)
-3. extract_about_property_land_v01.xsd Номер версии – 01 (Выписка из ЕГРН на земельный участок)
-4. extract_about_property_build_v01.xsd Номер версии – 01 (Выписка из ЕГРН на здание)
-5. urn://x-artefacts-rosreestr-ru/outgoing/kvoks/3.0.1 (Выписка полная из ЕГРН на объект капитального строительства)
-6. urn://x-artefacts-rosreestr-ru/outgoing/kpoks/4.0.1 (Выписка краткая из ЕГРН на объект капитального строительства)
+3. extract_about_property_land_v01.xsd Номер версии – 01 (Выписка полная из ЕГРН на земельный участок)
+4. extract_base_params_land_v01.xsd Номер версии – 01 (Выписка краткая из ЕГРН на земельный участок)
+5. extract_about_property_build_v01.xsd Номер версии – 01 (Выписка из ЕГРН на здание)
+6. urn://x-artefacts-rosreestr-ru/outgoing/kvoks/3.0.1 (Выписка полная из ЕГРН на объект капитального строительства)
+7. urn://x-artefacts-rosreestr-ru/outgoing/kpoks/4.0.1 (Выписка краткая из ЕГРН на объект капитального строительства)
 
 Внимание: из ОКС пока поддерживаются только здания, сооружения, помещения
 
